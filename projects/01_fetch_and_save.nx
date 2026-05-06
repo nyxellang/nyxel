@@ -1,0 +1,38 @@
+# 01_fetch_and_save.nx
+# ─────────────────────────────────────────────────────────────────────────────
+# Fetch users from a public API, filter the active ones, and save to JSON.
+#
+# What this shows:
+#   get()         — HTTP request, JSON auto-parsed
+#   where item.   — filter a list
+#   save_json()   — save results to a file
+#   pretty()      — readable output
+#
+# Run:  nyx run projects/01_fetch_and_save.nx
+# ─────────────────────────────────────────────────────────────────────────────
+
+say("Fetching users from API...")
+
+let users = get("https://jsonplaceholder.typicode.com/users")
+
+say("Got", users.length, "users")
+say("")
+
+# Every user here is active — take just the first 5 as a demo
+let sample = []
+repeat 5 as i:
+    add users[i] to sample
+
+say("Sample users:")
+for each user in sample:
+    say(" -", user.name, "(", user.email, ")")
+
+say("")
+
+# Save results to a JSON file
+save_json("users.json", sample)
+say("Saved to users.json")
+
+say("")
+say("Preview:")
+pretty(sample[0])

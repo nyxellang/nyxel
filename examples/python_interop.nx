@@ -1,0 +1,48 @@
+# python_interop.nx
+# ─────────────────────────────────────────────────────────────────────────────
+# Shows how the python: … end escape hatch works.
+# Nyxel variables are available inside the block; return sends a value back.
+#
+# Run with:  nyx run examples/python_interop.nx
+# ─────────────────────────────────────────────────────────────────────────────
+
+say("─── Python interop demo ───")
+say("")
+
+# 1. Basic escape: access a Nyxel variable inside Python
+let name = "Nyxel"
+let greeting = python:
+    return "Hello from Python, " + name + "!"
+end
+say(greeting)
+
+# 2. Use a Python standard library module not in Nyxel's built-ins
+let now = python:
+    import datetime
+    return datetime.datetime.now().strftime("%H:%M:%S on %A")
+end
+say("Current time:", now)
+
+# 3. Math via Python (shows the Nyxel value `x` is readable)
+let x = 16
+let result = python:
+    import math
+    return math.sqrt(x) * 2
+end
+say("sqrt(16) * 2 =", result)
+
+# 4. Build a value from a loop inside Python and return it
+let words = ["scripting", "automation", "simplicity"]
+let sentence = python:
+    return "Nyxel is about: " + ", ".join(words) + "."
+end
+say(sentence)
+
+# 5. Standalone python: block (no return value needed)
+say("")
+say("System info from Python:")
+python:
+    import platform
+    print("  OS      :", platform.system(), platform.release())
+    print("  Python  :", platform.python_version())
+end

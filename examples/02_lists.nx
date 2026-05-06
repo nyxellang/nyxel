@@ -1,0 +1,51 @@
+# 02_lists.nx
+# ─────────────────────────────────────────────────────────────────────────────
+# Working with lists in Nyxel.
+# Shows: creating lists, looping, filtering with 'where', and 'add … to'.
+#
+#   nyx run examples/02_lists.nx
+# ─────────────────────────────────────────────────────────────────────────────
+
+# A list holds multiple values
+let fruits = ["apple", "banana", "cherry", "date", "elderberry"]
+
+say("All fruits:", fruits.length, "total")
+for each fruit in fruits:
+    say(" -", fruit)
+
+say("")
+
+# 'where' filters a list — 'item' is the current element
+let short_names = fruits where item.length <= 5
+say("Short names (5 chars or fewer):")
+for each fruit in short_names:
+    say(" -", fruit, "(", fruit.length, "letters)")
+
+say("")
+
+# Build a new list using 'add … to'
+let scores = [72, 91, 45, 88, 63, 95, 55, 80]
+
+let passing = []
+let failing = []
+
+for each score in scores:
+    when score >= 60:
+        add score to passing
+    otherwise:
+        add score to failing
+
+say("Scores:", scores)
+say("Passing (>=60):", passing)
+say("Failing  (<60):", failing)
+say("Pass rate:", passing.length, "out of", scores.length)
+
+say("")
+
+# Numbers: filter with is_even
+let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+let evens = numbers where is_even(item)
+let odds  = numbers where is_odd(item)
+
+say("Even numbers:", evens)
+say("Odd numbers:", odds)

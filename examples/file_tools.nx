@@ -1,0 +1,45 @@
+# file_tools.nx
+# ─────────────────────────────────────────────────────────────────────────────
+# Demonstrates Nyxel's file and OS built-ins.
+# Creates a working directory, writes files, reads them back, lists contents.
+#
+# Run with:  nyx run examples/file_tools.nx
+# ─────────────────────────────────────────────────────────────────────────────
+
+let dir = "nyxel_output"
+
+say("Creating directory:", dir)
+mkdir(dir)
+
+# Write a few sample files
+let names = ["alpha", "beta", "gamma"]
+let i = 1
+
+for name in names:
+    let path = dir + "/" + name + ".txt"
+    let content = "File " + str(i) + ": " + name + "\nCreated by Nyxel.\n"
+    write(path, content)
+    say("  wrote", path)
+    i = i + 1
+
+say("")
+say("Directory contents:")
+
+let files = ls(dir)
+for f in files:
+    say(" ", f)
+
+say("")
+say("Reading back gamma.txt:")
+let text = read(dir + "/gamma.txt")
+say(text)
+
+# Append a timestamp via the python: escape hatch
+let stamp = python:
+    import datetime
+    return datetime.datetime.now().strftime("Generated: %Y-%m-%d %H:%M:%S")
+end
+
+append(dir + "/gamma.txt", stamp + "\n")
+say("Appended timestamp to gamma.txt")
+say("Done.")

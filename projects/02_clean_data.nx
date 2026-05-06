@@ -1,0 +1,46 @@
+# 02_clean_data.nx
+# ─────────────────────────────────────────────────────────────────────────────
+# Clean a raw data file: remove empty lines, strip whitespace,
+# remove duplicates, and save the clean version.
+#
+# Run:  nyx run projects/02_clean_data.nx
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Create a sample messy data file to work with
+write("raw_data.txt", "apple")
+append("raw_data.txt", "\nbanana\n")
+append("raw_data.txt", "\napple\n")
+append("raw_data.txt", "\ncherry\n")
+append("raw_data.txt", "\n  banana  \n")
+append("raw_data.txt", "\ndate\n")
+append("raw_data.txt", "\ncherry\n")
+append("raw_data.txt", "\nelderberry\n")
+say("Created raw_data.txt")
+say("")
+
+# Step 1: read all lines
+let lines = read_lines("raw_data.txt")
+say("Raw lines:", lines.length)
+
+# Step 2: remove empty lines
+let non_empty = lines where not is_empty(item)
+say("After removing empty lines:", non_empty.length)
+
+# Step 3: strip whitespace from each line
+let trimmed = []
+for each line in non_empty:
+    add strip(line) to trimmed
+
+# Step 4: remove duplicates
+let clean = unique(trimmed)
+say("After removing duplicates:", clean.length)
+
+say("")
+say("Clean data:")
+for each item in clean:
+    say(" -", item)
+
+# Step 5: save
+write("clean_data.txt", join("\n", clean))
+say("")
+say("Saved to clean_data.txt")

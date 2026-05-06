@@ -1,0 +1,54 @@
+# real_demo.nx
+# ─────────────────────────────────────────────────────────────────────────────
+# A real Nyxel script: fetch users from a public API, filter them,
+# process results, and save a report.
+#
+# This is the test of whether the language feels smooth.
+# Run with:  nyx run examples/real_demo.nx
+# ─────────────────────────────────────────────────────────────────────────────
+
+say("Fetching users...")
+
+let users = get("https://jsonplaceholder.typicode.com/users")
+
+say("Total users:", users.length)
+say("")
+
+# Filter using where — reads like a sentence
+let short_names = users where name.length <= 10
+
+say("Users with short names:")
+for each user in short_names:
+    say(" -", user.name, "(", user.name.length, "chars )")
+
+say("")
+
+# Build a summary list using add … to
+let lines = []
+for each user in users:
+    let line = user.name + " — " + user.email
+    add line to lines
+
+say("All users and emails:")
+for each line in lines:
+    say(" ", line)
+
+say("")
+
+# Safe processing with try/catch
+say("Checking for a specific user...")
+try:
+    let target = users where name.length > 0
+    let first = target[0]
+    say("First user:", first.name)
+    say("City:", first.address.city)
+catch e:
+    say("Unexpected error:", e.message)
+
+say("")
+
+# Save the report
+let report = join("\n", lines)
+write("user_report.txt", report)
+say("Report saved to user_report.txt")
+say("Done.")

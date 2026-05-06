@@ -1,0 +1,127 @@
+# scripts.nx
+# ─────────────────────────────────────────────────────────────────────────────
+# A tour of Nyxel's syntax — using the language as it's meant to be written.
+# Run with:  nyx run examples/scripts.nx
+# ─────────────────────────────────────────────────────────────────────────────
+
+say("═══ Nyxel Tour ═══")
+say("")
+
+# ── Variables ─────────────────────────────────────────────────────────────────
+say("── Variables ──")
+let name    = "Nyxel"
+let version = 1
+let active  = true
+say(name, "v" + str(version), "active:", active)
+say("")
+
+# ── Conditionals: when / otherwise when / otherwise ───────────────────────────
+say("── Conditionals ──")
+let score = 72
+
+when score >= 90:
+    say("Grade: A")
+otherwise when score >= 75:
+    say("Grade: B")
+otherwise when score >= 60:
+    say("Grade: C")
+otherwise:
+    say("Grade: F")
+say("")
+
+# ── repeat: three forms ───────────────────────────────────────────────────────
+say("── Repeat ──")
+
+# Basic: just run N times
+say("Knock knock knock:")
+repeat 3:
+    say("  knock")
+
+# With index: i counts from 0
+say("Countdown:")
+repeat 3 as i:
+    say(" ", 2 - i)
+
+# Range: natural counting
+say("Steps:")
+repeat step from 1 to 4:
+    say("  step", step)
+say("")
+
+# ── for: iterating over collections ───────────────────────────────────────────
+say("── For loops ──")
+let fruits = ["apple", "banana", "cherry"]
+for fruit in fruits:
+    say(" -", fruit)
+say("")
+
+# ── Functions: fn ─────────────────────────────────────────────────────────────
+say("── Functions ──")
+
+fn factorial(n):
+    when n <= 1:
+        return 1
+    return n * factorial(n - 1)
+
+say("5! =", factorial(5))
+say("8! =", factorial(8))
+
+fn greet(person, times = 1):
+    repeat times:
+        say("Hello,", person + "!")
+
+greet("world")
+greet("Nyxel", 2)
+say("")
+
+# ── where: filtering lists ────────────────────────────────────────────────────
+say("── Where ──")
+
+let people = [
+    {"name": "Alice",  "age": 25, "active": true},
+    {"name": "Bob",    "age": 16, "active": true},
+    {"name": "Carol",  "age": 31, "active": false},
+    {"name": "Dan",    "age": 19, "active": true}
+]
+
+let adults = people where age >= 18
+say("Adults:")
+for p in adults:
+    say(" -", p.name, "(age", str(p.age) + ")")
+
+let active_adults = people where age >= 18 and active == true
+say("Active adults:", len(active_adults))
+say("")
+
+# ── Structs ───────────────────────────────────────────────────────────────────
+say("── Structs ──")
+
+struct Point:
+    x
+    y = 0
+
+let p = Point(3, 4)
+say("Point:", p.x, p.y)
+
+let dist = python:
+    return (x**2 + y**2) ** 0.5
+end
+
+say("Distance from origin:", round(dist, 2))
+say("")
+
+# ── try / catch ───────────────────────────────────────────────────────────────
+say("── Error handling ──")
+
+fn safe_divide(a, b):
+    try:
+        return a / b
+    catch e:
+        say("Can't divide by", b, "—", e.message)
+        return 0
+
+say("10 / 2 =", safe_divide(10, 2))
+say("10 / 0 =", safe_divide(10, 0))
+say("")
+
+say("═══ Done ═══")

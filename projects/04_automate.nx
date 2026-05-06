@@ -1,0 +1,56 @@
+# 04_automate.nx
+# ─────────────────────────────────────────────────────────────────────────────
+# Automate a workflow: check the environment, inspect files, run shell
+# commands, and save a status report.
+#
+# What this shows:
+#   env()         — read environment variables
+#   run()         — run shell commands, capture output
+#   run_lines()   — run command, get output as list
+#   exists()      — check if a file exists
+#   group_by()    — group results by a field
+#   save_json()   — save structured output
+#
+# Run:  nyx run projects/04_automate.nx
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+say("=== System Report ===")
+say("")
+
+# Check environment
+let home = env("HOME", "unknown")
+let path = env("PATH", "unknown")
+say("Home directory:", home)
+say("")
+
+# Run shell commands
+let python_version = run("python3 --version")
+say("Python:", python_version)
+
+let disk_usage = run("df -h . 2>/dev/null || echo 'disk info unavailable'")
+say("Disk usage:")
+say(disk_usage)
+say("")
+
+# List current directory
+let files = run_lines("ls -la 2>/dev/null || dir")
+say("Files in current directory:", files.length, "entries")
+
+let nx_files = files where contains(item, ".nx")
+say(".nx files found:", nx_files.length)
+
+say("")
+
+# Build a status report
+let status = {
+    "python": python_version,
+    "home": home,
+    "nx_files": nx_files.length
+}
+
+save_json("status.json", status)
+say("Status saved to status.json")
+
+say("")
+say("=== Done ===")

@@ -1,0 +1,37 @@
+# 01_hello.nx
+# ─────────────────────────────────────────────────────────────────────────────
+# Your first Nyxel program.
+# No setup. No imports. Just run it.
+#
+#   nyx run examples/01_hello.nx
+# ─────────────────────────────────────────────────────────────────────────────
+
+let name = "world"
+say("Hello,", name)
+
+# Variables hold values
+let age     = 17
+let score   = 98.5
+let passing = true
+
+say("Age:", age)
+say("Score:", score)
+say("Passing:", passing)
+
+# when checks a condition
+when score >= 90:
+    say("Grade: A — great work!")
+otherwise when score >= 75:
+    say("Grade: B — well done")
+otherwise:
+    say("Grade: C — keep going")
+
+# repeat runs a block N times
+say("")
+say("Counting up:")
+repeat 5 as i:
+    say("  step", i + 1)
+
+# say() takes any number of values and joins them with spaces
+say("")
+say("Name:", name, "— Age:", age, "— Score:", score)

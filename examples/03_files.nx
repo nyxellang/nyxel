@@ -1,0 +1,51 @@
+# 03_files.nx
+# ─────────────────────────────────────────────────────────────────────────────
+# Reading and writing files in Nyxel.
+# Shows: write, read, read_lines, lines_of, words_of, filtering lines.
+#
+#   nyx run examples/03_files.nx
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Write a file
+let notes = "Buy groceries\nCall the dentist\nFinish homework\nWalk the dog\nRead a book"
+write("my_notes.txt", notes)
+say("Notes written to my_notes.txt")
+
+say("")
+
+# Read it back as text
+let text = read("my_notes.txt")
+say("Full text:")
+say(text)
+
+say("")
+
+# read_lines gives you each line as a list item — no split() needed
+let lines = read_lines("my_notes.txt")
+say("You have", lines.length, "notes:")
+for each line in lines:
+    say(" •", line)
+
+say("")
+
+# Filter lines using 'where item'
+let short_notes = lines where item.length <= 15
+say("Short notes (15 chars or fewer):")
+for each note in short_notes:
+    say(" -", note)
+
+say("")
+
+# words_of splits text into words — no split(" ") needed
+let sentence = "Nyxel is simple clear and powerful"
+let words = words_of(sentence)
+say("Words:", words.length)
+say("First word:", words[0])
+say("Last word:", words[words.length - 1])
+
+say("")
+
+# Save a processed result
+let result = join("\n", lines where item.length > 10)
+write("long_notes.txt", result)
+say("Notes longer than 10 chars saved to long_notes.txt")

@@ -1,0 +1,50 @@
+# 03_data_analysis.nx
+# ─────────────────────────────────────────────────────────────────────────────
+# Read numbers from a file and calculate basic statistics.
+#
+# Run:  nyx run projects/03_data_analysis.nx
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Create sample data (simulates an experiment output file)
+write("experiment.txt", "12.5")
+append("experiment.txt", "\n8.3\n15.7\n11.2\n9.8\n14.1\n10.6")
+append("experiment.txt", "\nbad_reading")
+append("experiment.txt", "\n13.3\n7.9\n16.2\n11.8")
+say("Created experiment.txt")
+say("")
+
+# Read and extract numbers — non-numeric lines are automatically skipped
+let raw   = read_lines("experiment.txt")
+let values = numbers_of(raw)
+
+say("Readings found:", values.length)
+say("(Non-numeric lines were automatically skipped)")
+say("")
+
+# Statistics
+say("─── Statistics ───────────────────────")
+say("Sum:      ", sum_of(values))
+say("Average:  ", round(average_of(values), 2))
+say("Max:      ", max_of(values))
+say("Min:      ", min_of(values))
+say("")
+
+# Filter: values above average
+let avg = average_of(values)
+let above_avg = values where item > avg
+
+say("Above average (", round(avg, 2), "):")
+for each v in above_avg:
+    say(" ", v)
+
+say("")
+
+# Save report
+let report = "Experiment Report"
+let report = report + "\nReadings: " + to_str(values.length)
+let report = report + "\nAverage:  " + to_str(round(average_of(values), 2))
+let report = report + "\nMax:      " + to_str(max_of(values))
+let report = report + "\nMin:      " + to_str(min_of(values))
+
+write("report.txt", report)
+say("Report saved to report.txt")

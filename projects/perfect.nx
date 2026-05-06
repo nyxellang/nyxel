@@ -1,0 +1,161 @@
+# perfect.nx
+# ─────────────────────────────────────────────────────────────────────────────
+# One script that shows everything Nyxel can do clearly.
+# If someone reads this and understands it immediately — Nyxel is working.
+#
+# Run:  nyx run projects/perfect.nx
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# ── 1. Variables ──────────────────────────────────────────────────────────────
+
+let name    = "Nyxel"
+let version = 1
+let ready   = true
+
+say("Language:", name, "v" + to_str(version))
+say("")
+
+
+# ── 2. Conditions ─────────────────────────────────────────────────────────────
+
+let score = 87
+
+when score >= 90:
+    say("Grade: A")
+otherwise when score >= 75:
+    say("Grade: B")
+otherwise:
+    say("Grade: C")
+
+say("")
+
+
+# ── 3. Lists and filtering ────────────────────────────────────────────────────
+
+let scores = [45, 82, 91, 67, 55, 78, 95, 60]
+
+let passing = scores where item >= 60
+let failing = scores where item < 60
+
+say("Scores:", scores)
+say("Passing:", passing)
+say("Failing:", failing)
+say("Average:", round(average_of(scores), 1))
+say("Highest:", max_of(scores))
+say("")
+
+
+# ── 4. Building lists ─────────────────────────────────────────────────────────
+
+let grades = []
+
+for each score in scores:
+    when score >= 90:
+        add "A" to grades
+    otherwise when score >= 75:
+        add "B" to grades
+    otherwise when score >= 60:
+        add "C" to grades
+    otherwise:
+        add "F" to grades
+
+say("Grade list:", grades)
+say("A grades:", count_of(grades, "A"))
+say("F grades:", count_of(grades, "F"))
+say("")
+
+
+# ── 5. Repeat loops ───────────────────────────────────────────────────────────
+
+say("Multiplication table for 3:")
+repeat i from 1 to 5:
+    say(" 3 x", i, "=", 3 * i)
+
+say("")
+
+
+# ── 6. Functions ──────────────────────────────────────────────────────────────
+
+fn summarise(values):
+    say("  Count:  ", values.length)
+    say("  Sum:    ", sum_of(values))
+    say("  Average:", round(average_of(values), 2))
+    say("  Max:    ", max_of(values))
+    say("  Min:    ", min_of(values))
+
+say("Score summary:")
+summarise(scores)
+say("")
+
+
+# ── 7. Working with objects ───────────────────────────────────────────────────
+
+let students = [
+    {"name": "Alice",   "score": 91, "active": true},
+    {"name": "Bob",     "score": 55, "active": true},
+    {"name": "Carol",   "score": 78, "active": false},
+    {"name": "Dan",     "score": 84, "active": true},
+    {"name": "Eve",     "score": 49, "active": true}
+]
+
+# Filter in plain English
+let active_students  = students where item.active == true
+let top_students     = students where item.score >= 80 and item.active == true
+
+say("Active students:", active_students.length)
+say("Top active students:")
+for each student in top_students:
+    say(" -", student.name, "(", student.score, ")")
+
+say("")
+
+
+# ── 8. Text processing ────────────────────────────────────────────────────────
+
+let sentence = "Nyxel makes scripting simple and readable"
+let words    = words_of(sentence)
+
+say("Words:", words.length)
+say("Long words:")
+let long_words = words where item.length > 6
+for each word in long_words:
+    say(" -", word)
+
+say("")
+
+
+# ── 9. Error handling ─────────────────────────────────────────────────────────
+
+fn safe_average(values):
+    try:
+        return round(average_of(values), 2)
+    catch e:
+        say("Could not compute average:", e.message)
+        return 0
+
+say("Average of scores:  ", safe_average(scores))
+say("Average of nothing: ", safe_average([]))
+say("")
+
+
+# ── 10. Files and data ────────────────────────────────────────────────────────
+
+# Save results
+let report_lines = []
+add "Score Report" to report_lines
+add "─────────────" to report_lines
+
+for each student in students:
+    let line = student.name + ": " + to_str(student.score)
+    add line to report_lines
+
+write("report.txt", join("\n", report_lines))
+say("Report saved to report.txt")
+
+# Save as JSON too
+save_json("students.json", students)
+say("Data saved to students.json")
+
+say("")
+say("Done. If this all made sense — Nyxel is working.")

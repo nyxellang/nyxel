@@ -1,0 +1,27 @@
+[
+  {
+    "name": "Alice",
+    "score": 91,
+    "active": true
+  },
+  {
+    "name": "Bob",
+    "score": 55,
+    "active": true
+  },
+  {
+    "name": "Carol",
+    "score": 78,
+    "active": false
+  },
+  {
+    "name": "Dan",
+    "score": 84,
+    "active": true
+  },
+  {
+    "name": "Eve",
+    "score": 49,
+    "active": true
+  }
+]

@@ -1,0 +1,36 @@
+# fetch_demo.nx
+# ─────────────────────────────────────────────────────────────────────────────
+# Fetches a list of public posts from JSONPlaceholder, filters to the first
+# five, prints their titles, and saves a summary to disk.
+#
+# Run with:  nyx run examples/fetch_demo.nx
+# ─────────────────────────────────────────────────────────────────────────────
+
+say("Fetching posts from API...")
+
+let posts = get("https://jsonplaceholder.typicode.com/posts")
+
+say("Total posts:", len(posts))
+say("")
+say("── First 5 posts ────────────────────────────────")
+
+let lines = []
+let count = 0
+
+for post in posts:
+    if count >= 5:
+        break
+    say(count + 1, ".", post.title)
+    lines = lines + ["[" + str(count + 1) + "] " + post.title]
+    count = count + 1
+
+say("")
+
+# Build the summary string using a python: block
+let summary = python:
+    header = "Nyxel Fetch Demo — Top 5 Posts\n" + ("─" * 40) + "\n"
+    return header + "\n".join(lines)
+end
+
+write("output.txt", summary)
+say("Saved summary to output.txt")

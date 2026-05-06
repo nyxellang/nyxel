@@ -1,0 +1,7 @@
+Score Report
+─────────────
+Alice: 91
+Bob: 55
+Carol: 78
+Dan: 84
+Eve: 49
