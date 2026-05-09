@@ -3,19 +3,6 @@ nyxel.repl
 ──────────
 Interactive Read-Eval-Print loop for Nyxel.
 
-Improvements over v0.1
-──────────────────────
-• Expression results are shown automatically (like Python's REPL):
-      >>>  3 + 4
-       =   7
-
-• Smarter multiline block detection:
-  - Tracks nesting depth so  if  inside  def  works correctly
-  - Knows about  try:  and  struct:  blocks
-  - Shows depth in the continuation prompt  [2] ...
-
-• Error display is clean — no Python traceback noise.
-
 • Special REPL commands:  help  exit  quit  clear  vars
 """
 
@@ -35,12 +22,12 @@ from .ast         import ExprStmt
 # ── display strings ───────────────────────────────────────────────────────────
 
 BANNER = f"""\
-  ╔══════════════════════════════════════════╗
-  ║  Nyxel {VERSION}  ─  expressive scripting    ║
-  ╚══════════════════════════════════════════╝
+  ╔═══════════════════════════════════════════╗
+  ║ Nyxel {VERSION} - a simple scripting lang ║
+  ╚═══════════════════════════════════════════╝
 
   Type  help  for commands,  exit  to quit.
-  Expression results are shown automatically.
+   Results of expression are displayed automatically.
 """
 
 REPL_HELP = """
@@ -58,8 +45,8 @@ REPL_HELP = """
   │                                                         │
   │  for item in list:      iterate over a collection       │
   │  repeat 5:              run 5 times                     │
-  │  repeat 5 as i:         run 5 times, i = 0..4          │
-  │  repeat i from 1 to 5:  i goes 1, 2, 3, 4, 5           │
+  │  repeat 5 as i:         run 5 times, i = 0..4           │
+  │  repeat i from 1 to 5:  i goes 1, 2, 3, 4, 5            │
   │  while cond:            conditional loop                │
   │                                                         │
   │  fn greet(name):        define a function               │
@@ -68,10 +55,10 @@ REPL_HELP = """
   │  try: / catch e: / finally:   error handling            │
   │  struct Point: / x / y = 0   lightweight object         │
   │                                                         │
-  │  list where condition   filter a list — 'item' is current  │
-  │      numbers where is_even(item)                            │
-  │      users where item.age >= 18                             │
-  │      words where item.length > 4                            │
+  │  list where condition   filter a list 'item' is current │
+  │      numbers where is_even(item)                        │
+  │      users where item.age >= 18                         │
+  │      words where item.length > 4                        │
   └─────────────────────────────────────────────────────────┘
 
   ┌─ Built-ins ─────────────────────────────────────────────────┐
@@ -86,7 +73,7 @@ REPL_HELP = """
   │  to_str(x)          to_int(x)    to_float(x)                │
   │  count_of(lst, val) → count occurrences                     │
   │                                                             │
-  │  len(x)  type(x)  str(x)  int(x)  float(x)                 │
+  │  len(x)  type(x)  str(x)  int(x)  float(x)                  │
   │  range(n)  sorted(lst)  sum(lst)  max(lst)  min(lst)        │
   │  join(sep, lst)  upper(s)  lower(s)  strip(s)               │
   │  sqrt(n)  abs(n)  round(n)  rand_int(a, b)  choice(lst)     │
@@ -94,7 +81,7 @@ REPL_HELP = """
   └─────────────────────────────────────────────────────────────┘
 
   ┌─ Modules ───────────────────────────────────────────────┐
-  │  bring math_utils               → math_utils.add(1,2)  │
+  │  bring math_utils               → math_utils.add(1,2)   │
   │  bring math_utils as m          → m.add(1, 2)           │
   │  bring add from math_utils      → add(1, 2)             │
   └─────────────────────────────────────────────────────────┘
@@ -108,19 +95,13 @@ REPL_HELP = """
 # DESIGN NOTE: This is intentionally heuristic-based, not parser-based.
 #
 # A parser-based approach would be more correct but requires a full parse
-# attempt on every keystroke, which is expensive and complicates error display.
-# The heuristic (line ends with ':', first word is a block keyword) is correct
-# for all current Nyxel syntax and will remain so as long as the language
-# stays block-structured.
-#
-# Known limitation: if Nyxel later adds dict literals with trailing colons
-# on their own line, or decorators, or inline lambda colons, this will need
-# to be revisited.  The fix at that point is a lightweight pre-parse pass,
-# not a full parser call.
-#
-# `otherwise:` is a special case: "otherwise" alone ends with `:` via the
-# colon on the same token, but `otherwise when x > 3:` has "otherwise" as
-# its first word too.  Both are correctly captured by the keyword set.
+# Attempts on every keystroke, which expensive and complicated error display.
+# The heuristic (line ends with ’:’. First word is a block keyword) is right
+# For all current Nyxel syntax and will be as long as the language
+# Stays block-structured.
+# Otherwise: is what we call a higher special case: will terminate with:for alone by the:
+# Colon on the same token, but otherwise when x > 3: has “otherwise” as
+ #Is captured correctly in either of the first words. Both are separated correctly by the set of keywords.
 
 _BLOCK_OPENERS = frozenset({
     # Nyxel style (primary)
@@ -138,9 +119,9 @@ _BLOCK_OPENERS = frozenset({
 
 def _opens_block(line: str) -> bool:
     """
-    Return True if this line opens a new indented block.
+    Return True if this line begins a new indented block.
 
-    Heuristic: line ends with ':', and its first word is a known block opener.
+    Heuristic: line ends with ":", and its first word is a known block opener.
     See the design note above for limitations and upgrade path.
     """
     stripped = line.strip()
@@ -162,11 +143,10 @@ def _indent_of(line: str) -> int:
 
 def _block_depth(buf: List[str]) -> int:
     """
-    Count how many unclosed block levels are open in the accumulated buffer.
-
-    Algorithm: track the indent stack.  Each line that opens a block (ends
-    with ':') pushes its indent level.  Each line whose indent is ≤ a level
-    on the stack pops that level first.  The stack depth is the answer.
+    For unclosed block levels in the accumulated buffer, count.
+    Algorithm: track the indent stack. For each line that opens a block ( ’...‘ends
+    With ’:’) creates a new level of indentation. extends the indentation of every line with indent,...,until its indentation is one level deeper:
+    Each occur on the stack will pop that level first. The stack depth is that answer.
     """
     stack: List[int] = []
     for line in buf:

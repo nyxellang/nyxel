@@ -1,16 +1,17 @@
 """
 nyxel.tokens
-────────────
-Token  — a single lexical unit produced by the lexer.
-KEYWORDS  — the set of reserved words in the Nyxel language (English + Arabic).
-ARABIC_TO_ENGLISH — maps Arabic keywords to their English equivalents.
+
+Token the basic unit of the language output by the lexer.
+
+KEYWORDS the set of reserved names in the Nyxel language (English + Arabic).
+ARABIC_TO_ENGLISH-- Maps Arabic keys to it English translation.
 
 Arabic support
-──────────────
-Arabic keywords are normalised to their English equivalents by the lexer
-before any token reaches the parser. The parser only ever sees English
-keyword values — so adding Arabic costs zero changes to the parser,
-interpreter, or runtime.
+
+Keywords in Arabic are normalized to English ones by the lexer
+Before any token can be passed to the parser.  As the parser will always receive it in English
+Keyword values -- so adding arabic costs zero changes to the parser, 
+Interpreter and runtime.3 See also the parallel markup language.
 """
 
 from dataclasses import dataclass

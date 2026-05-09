@@ -1,45 +1,5 @@
 """
 nyxel.bytecode
-──────────────
-Bytecode design document for Nyxel Stage 2.
-
-This file defines the complete instruction set and sketches the Compiler
-and VM classes.  Nothing here executes yet — it is a specification that
-will be implemented when the interpreter design is stable.
-
-Why bytecode?
-─────────────
-The current tree-walk interpreter is correct and readable, but it re-traverses
-the AST on every execution.  A bytecode VM:
-
-  • Compiles the AST once  →  flat list of fixed-size instructions
-  • Executes the bytecode  →  tight dispatch loop, no tree traversal
-  • Enables caching        →  save .nxb files, skip re-parsing
-
-Execution model
-───────────────
-Nyxel uses a stack-based VM (like CPython, the JVM, and WASM).
-Each instruction pops its inputs from the stack and pushes its result.
-
-Example:  let x = 3 + 4
-  LOAD_CONST   3       # push 3
-  LOAD_CONST   4       # push 4
-  BIN_OP       +       # pop 3, 4 → push 7
-  STORE        x       # pop 7 → store in current scope
-
-Example:  say("hello", x)
-  LOAD_CONST   "hello" # push "hello"
-  LOAD         x       # push value of x
-  CALL_BUILTIN say  2  # pop 2 args → call say
-
-Example:  if x > 3:
-  LOAD         x       # push x
-  LOAD_CONST   3       # push 3
-  BIN_OP       >       # push bool result
-  JUMP_IF_FALSE  <addr>  # pop bool; jump if false
-  ... body ...
-  JUMP           <end>
-  <addr>: ...
 """
 
 from enum import IntEnum, auto
@@ -51,10 +11,10 @@ from enum import IntEnum, auto
 
 class Op(IntEnum):
     """
-    Complete Nyxel instruction set.
+    Nyxel instruction set.
 
     Each instruction is stored as:
-        [op: uint8,  arg: uint16]   (3 bytes per instruction)
+        [op: uint8,  arg: uint16]   (3 bytes per inst)
 
     arg is an index into the constant pool, name pool, or a jump offset,
     depending on the instruction.  Instructions that don't need an arg
@@ -205,7 +165,7 @@ class Compiler:
     """
     Walks the AST and emits bytecode instructions.
 
-    Status: DESIGN ONLY — not yet connected to the runtime.
+    Status: DESIGN ONLY not yet working.
 
     Usage (future):
         from nyxel.bytecode import Compiler
@@ -543,7 +503,6 @@ class VM:
                      for _ in range(ins.arg)]
             self._stack.append(dict(reversed(pairs)))
 
-        # … remaining ops to be implemented in Stage 2
 
     @staticmethod
     def _eval_binop(op: str, l, r):
@@ -558,29 +517,3 @@ class VM:
         }
         return ops.get(op, lambda a, b: None)(l, r)
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  DEVELOPMENT ROADMAP
-# ══════════════════════════════════════════════════════════════════════════════
-#
-# Stage 2a  —  Compiler  (AST → CodeObject)
-#   [ ] Complete _compile_def (nested CodeObjects for functions)
-#   [ ] Short-circuit 'and'/'or' with JUMP_IF_TRUE/FALSE
-#   [ ] Proper 'break'/'continue' back-patching inside loops
-#   [ ] Closures (capture free variables into CodeObject)
-#
-# Stage 2b  —  VM execution
-#   [ ] CALL / RETURN with a call stack
-#   [ ] LOAD_ATTR / STORE_ATTR for NyxObject
-#   [ ] TRY_START / TRY_END / CATCH_STORE exception tables
-#   [ ] BRING module loading
-#
-# Stage 2c  —  Integration
-#   [ ] nyx build file.nx  →  file.nxb  (serialised CodeObject)
-#   [ ] nyx run  file.nxb  →  load and execute without re-parsing
-#   [ ] Keep tree-walk interpreter as fallback for development
-#
-# Stage 3  —  Optimisation
-#   [ ] Constant folding in Compiler
-#   [ ] Inline caching for attribute lookups
-#   [ ] Peephole optimiser (LOAD x / POP  →  nothing)

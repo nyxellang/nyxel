@@ -1,9 +1,8 @@
 """
 nyxel.parser
 ────────────
-Recursive-descent parser.
 
-New syntax in this version:
+syntax:
   when cond:               replaces  if cond:
   otherwise when cond:     replaces  elif cond:
   otherwise:               replaces  else:
@@ -11,8 +10,6 @@ New syntax in this version:
   repeat n as i:           repeat with loop index
   repeat i from a to b:    range-based repeat
   collection where cond    list filtering expression
-
-Classic  if / elif / else / def  remain valid — same AST, just aliases.
 
 Operator precedence (low → high):
   where  →  or  →  and  →  not  →  comparison  →

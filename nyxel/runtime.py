@@ -360,17 +360,19 @@ class NyxStruct:
 
 class NyxException(NyxObject):
     """
-    The error object exposed inside  catch e:  blocks.
+    The error object surfaced in catch e: blocks.
 
-    Placement rationale: NyxException lives here in runtime.py (alongside
-    NyxObject) rather than in interpreter.py because it IS a runtime value —
-    it gets stored in the catch variable like any other NyxObject and is
-    readable via  e.kind  and  e.message.  It is not execution machinery;
-    it is data.
+    Placement justification : The NyxException is in this location as runtime.py near to this line.
 
-    When a VM / bytecode layer is added, NyxException will still live at
-    the runtime layer, with the VM creating instances when an error is caught.
+    (NyxObject) and not in interpreter.py as it IS a runtime value
+    It is saved in catch as an other NyxObject and goes into the States:
+    Readable by e.kind and e.message. It is not a machine language to perform; 
 
+    It is data: years, weeks, days, hours,  even seconds, uncounted,  making the whole work become indefinite and into huge amount of data totally.
+
+    Adding a VM / bytecode layer, NyxException would still be present at
+
+    The runtime layer,  as long as the VM creates instances on catching an error.
         try:
             risky()
         catch e:

@@ -476,7 +476,7 @@ class Interpreter:
                 raise NyxError("TypeError",
                                f"{_type_name(obj)} can't be accessed with [ ]",
                                hint="Only lists and dicts support index access")
-
+es where item.length > 4
         if nn == "AttrExpr":
             obj  = self._eval(node.obj, env)
             attr = node.attr

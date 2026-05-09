@@ -4,14 +4,11 @@ nyxel.errors
 NyxError  — user-facing language error with source location, display, and hint.
 _Return, _Break, _Continue  — internal control-flow signals (not errors).
 
-Error philosophy: Nyxel doesn't punish mistakes. It teaches.
-
 Every error should answer three questions:
   1. What went wrong?     (kind + message)
   2. Where did it happen? (line + source line + caret)
   3. What should I do?    (hint)
 
-The tone should be a helpful teacher, not a compiler.
 """
 
 import difflib
@@ -23,7 +20,7 @@ import difflib
 
 class NyxError(Exception):
     """
-    A language-level error with rich, teacher-style display.
+    A language-level error.
 
     Attributes
     ──────────

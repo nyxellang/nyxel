@@ -1,7 +1,7 @@
 """
-Nyxel — a lightweight, expressive scripting language.
+Nyxel
 
-Public API (for embedding Nyxel inside Python projects):
+Public API:
 
     from nyxel import run_source, run_file, Interpreter
 

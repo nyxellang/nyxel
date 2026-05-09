@@ -3,13 +3,6 @@ nyxel.lexer
 ───────────
 Converts Nyxel source text into a flat list of Token objects.
 
-Key responsibilities
-────────────────────
-• INDENT / DEDENT tokens for indentation-based blocks (Python-style).
-• `python: … end` sections are extracted as a single PYBLOCK token so the
-  parser never has to see raw Python.
-• Comments (#) are stripped.
-• Escape sequences inside strings are resolved.
 """
 
 import re
@@ -188,9 +181,6 @@ def lex(source: str, filename: str = "<input>") -> List[Token]:
                 toks.append(Token("DEDENT", indent, i + 1, 0, raw))
 
         # ── python: … end  block ──────────────────────────────────────────
-        # A line whose non-comment content ends with the literal  python:
-        # starts a raw Python block.  Everything until a bare `end` line
-        # at or below this indent level is gathered as a PYBLOCK token.
         if stripped.endswith("python:"):
             base_indent = indent
 

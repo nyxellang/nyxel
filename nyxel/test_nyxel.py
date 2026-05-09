@@ -1,7 +1,7 @@
 """
 tests/test_nyxel.py
 ────────────────────
-Test suite for the Nyxel interpreter.
+Test nyxel
 
 Run with:   python -m pytest tests/  -v
 Or:         python tests/test_nyxel.py
@@ -2448,28 +2448,6 @@ class TestArabic:
     def test_arabic_for_each(self):
         code = "اجعل ع = 0\nلكل كل رقم في [1, 2, 3]:\n    ع = ع + رقم\n"
         assert val(code, "ع") == 6
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     def test_arabic_fn(self):
         code = "دالة مضاعفة(رقم):\n    أرجع رقم * 2\nاجعل ن = مضاعفة(5)\n"

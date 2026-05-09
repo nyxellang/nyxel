@@ -1,13 +1,13 @@
 """
 nyxel.cli
 ─────────
-Command-line interface for the  nyx  tool.
+CLI for nyxel:
 
 Commands
 ────────
-  nyx run   <file.nx>  [args…]   execute a script
-  nyx repl                        start the interactive REPL
-  nyx check <file.nx>             syntax-check without running
+  nyx run   <file.nx>  [args…]    running a file
+  nyx repl                        for the interactive REPL
+  nyx check <file.nx>             checks the syntax without running
   nyx version                     print the version
   nyx help                        show usage
 """

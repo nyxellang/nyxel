@@ -1,10 +1,6 @@
 """
 nyxel.builtins
 ──────────────
-All built-in functions and constants available in every Nyxel script.
-
-Design rule: if most users need it → built-in.  Otherwise → module (future).
-
 Categories
 ──────────
   output      say()  pretty()

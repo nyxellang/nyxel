@@ -1,7 +1,6 @@
 """
 nyxel.ast
-─────────
-All AST node classes.  Pure data containers — no logic lives here.
+
 """
 
 
