@@ -32,8 +32,11 @@ python nyx repl
 
 ## Example
 let users = get("https://jsonplaceholder.typicode.com/users")
+
 let active = users where item.name.length <= 10
+
 for each user in active:
+
 say(user.name)
 
 
