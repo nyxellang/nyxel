@@ -1,8 +1,9 @@
 # Nyxel
 
-Nyxel is a simple, High-level programming language designed to be easy to read, and understand.
+Nyxel is a simple, high-level programming language designed to be easy to read, and understand.
 You just need to understand english and you'd be set.
 
+(update now added Arabic support)
 
 ## Requirements
 
