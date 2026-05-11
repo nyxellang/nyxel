@@ -117,15 +117,14 @@ class ModuleLoader:
 
     def _execute(self, path: Path, parent_interp: "Interpreter") -> "NyxObject":
         """
-        Run the module source in a clean, isolated environment.
+        Run the module source code in an isolated environment.
 
-        The module gets its own Interpreter (sharing the same ModuleLoader
-        so sub-modules are also cached) but with a completely fresh global
-        scope — nothing from the caller leaks in.
+        This way, we use our own Interpreter (which shares the ModuleLoader,
+        so that even sub-modules will be cached), however with a completely
+        fresh global scope – nothing is inherited from the caller's side.
 
-        Only names defined by the module itself are exported.
-        Built-in names (say, get, len, …) are available inside the module
-        but are not re-exported to the caller.
+        All symbols declared in the module become exports,
+        yet there are no built-ins such as get, len, ... exported back.
         """
         source = path.read_text(encoding="utf-8")
 
