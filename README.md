@@ -59,7 +59,7 @@ python nyx run filename.nx
 
 ## How to use
 
-I highly suggest you to read the ![Wiki](https://github.com/user/nyxel/wiki)
+I highly suggest you to read the ![Wiki](https://github.com/nyxellang/nyxel/wiki))
 
 You will learn a lot about Nyxel and how to use it
 
