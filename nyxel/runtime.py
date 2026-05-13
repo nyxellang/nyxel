@@ -1,37 +1,45 @@
 """
-nyxel.runtime
-─────────────
-Runtime data structures used by the interpreter.
+Nyxel.runtime
 
-  Environment   — lexically-scoped variable store
-  Param         — typed named tuple for function parameters
-  NyxFunction   — a user-defined Nyxel function (closure)
-  NyxObject     — dot-accessible dict wrapper
-  NyxStruct     — struct constructor
-  NyxException  — error object exposed in catch blocks
-  _wrap/_unwrap — reference-preserving conversion helpers
+Run-time data structures used by the interpreter.
 
-──────────────────────────────────────────────────────────────────
+ Environment lexically-scoped variable store
+Param, a typed named tuple for function parameters
+
+NyxFunction a user-defined function of a Nyxel (closure) placehoder name NyxFunction, and will contain a Nyxel function.
+
+NyxObject, a dot-accessible dict wrapper
+
+ NyxStruct . Struct constructor
+
+NyxException – Throwable returned by the catch block.
+
+ Wrap / Unwrap reference-preserving conversion helpers
+
 Reference-semantics contract
-──────────────────────────────────────────────────────────────────
+
 Nyxel uses REFERENCE semantics for objects (dicts / NyxObjects).
-This is a deliberate design decision, consistent with Python and JS.
 
-  let a = {"x": 1}
-  let b = a
-  b.x = 99
-  say(a.x)          # → 99  (a and b are the same object)
+This is a design choice, as per Python and JS.
 
-_wrap() wraps a Python dict in NyxObject WITHOUT copying.
-This keeps API responses, module namespaces, and struct instances
-cheap to pass around. It also means mutations are visible everywhere
-the object is referenced — exactly what scripting users expect.
+ def a = {1=>“x”}
+
+ let b = 0contd.
+
+B. x = 99
+
+ say(a.x) # -> 99 (a and b are the same object)
+
+Wrap() Wraps a Python dict in NyxObjectWITHOUTcopying.
+
+This maintains API responses, module namespace and struct instances.
+
+Being cheap to pass around. It also means that mutations are everywhere visible
+
+The object in the way scripting users are accustomed to.:
 
 If you need an independent copy:
-  let b = a.copy()   # NyxObject.copy() returns a shallow copy
-
-When we move to a bytecode VM, value-semantic structs can be added
-as a separate type. For now: objects are references. Period.
+B = a.copy() # A NyxObject.copy() returns a shallow copy
 ──────────────────────────────────────────────────────────────────
 """
 
