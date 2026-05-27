@@ -30,10 +30,10 @@
 
 # Nyxel
 
-Nyxel is a simple, high-level programming language designed to be easy to read, and understand (but this time i really mean it).
-You just need to understand English or Arabic and you my friend will be able to write some code :P.
+Nyxel is a simple, high-level programming language designed to be easy to read, and understand.
+You just need to understand English or Arabic and you'd be set.
 
-The philosophy of nyxel is that programming should be easy for everyone, not just people who want to continue in tech.
+The philosophy of nyxel is that programming should be easy for everyone not just people who want to continue in tech
 Programming shouldn't take days of studying it needs to be simple and easy.
 
 ## Requirements
@@ -111,7 +111,6 @@ Open `projects/perfect.nx` — it shows a big part of what the language can do.
 ## Issues
 
 The main one is that because its on Python it is quite slow but until now the speed doesn't matter that much because its still simple enough that the most demanding script won't take much time
-Like I have to be honest with all of you I can gatekeep this.
 
 ## License
 

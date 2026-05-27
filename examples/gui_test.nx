@@ -1,0 +1,55 @@
+# gui_test.nx — tests styling, Arabic, callbacks, and widget state
+
+let count = 0
+
+fn on_increment():
+    count = count + 1
+    counter_label.text = "Count: " + to_str(count)
+
+fn on_decrement():
+    when count > 0:
+        count = count - 1
+    counter_label.text = "Count: " + to_str(count)
+
+fn on_reset():
+    count = 0
+    counter_label.text = "Count: 0"
+
+fn on_greet():
+    let name = name_input.value
+    when name == "":
+        greeting_label.text = "Please enter a name!"
+    otherwise:
+        greeting_label.text = "Hello, " + name + "!"
+
+fn on_greet_ar():
+    let name = name_input.value
+    when name == "":
+        greeting_label.text = "!يرجى إدخال اسمك"
+    otherwise:
+        greeting_label.text = "!مرحباً " + name
+
+fn on_clear():
+    greeting_label.text = "Greeting will appear here"
+
+create window("Nyxel GUI Test  |  اختبار الواجهة") size(460, 400):
+
+    label("Counter  —  العداد")                              place(20, 20)
+    counter_label = label("Count: 0")                        place(20, 52)
+
+    btn("＋  Increment")  on_click(on_increment)             place(20,  88)
+    btn("－  Decrement")  on_click(on_decrement)             place(165, 88)
+    btn_danger("Reset ↺") on_click(on_reset)                 place(310, 88)
+
+    dim_label("─────────────────────────────────────")       place(20, 138)
+
+    label("Greeter  —  المرحّب")                             place(20, 162)
+    name_input = input("Type a name / اكتب اسمًا")          place(20, 196)
+
+    btn("Greet  👋")      on_click(on_greet)                 place(20,  240)
+    btn("مرحبا  👋")      on_click(on_greet_ar)              place(165, 240)
+    btn_danger("Clear ✕") on_click(on_clear)                 place(310, 240)
+
+    greeting_label = label("Greeting will appear here")      place(20, 290)
+
+    dim_label("Nyxel  —  tkinter backend")                   place(20, 360)

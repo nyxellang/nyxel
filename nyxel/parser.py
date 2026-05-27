@@ -1,15 +1,5 @@
 """
 nyxel.parser
-────────────
-
-syntax:
-  when cond:               replaces  if cond:
-  otherwise when cond:     replaces  elif cond:
-  otherwise:               replaces  else:
-  fn name(params):         replaces  def name(params):
-  repeat n as i:           repeat with loop index
-  repeat i from a to b:    range-based repeat
-  collection where cond    list filtering expression
 
 Operator precedence (low → high):
   where  →  or  →  and  →  not  →  comparison  →
@@ -20,17 +10,21 @@ from typing import List, Optional
 
 from .errors import NyxError
 from .tokens import Token
-from .ast import (
+from .nyx_ast import (
     Node,
     LetStmt, AssignStmt, IfStmt, RepeatStmt, RepeatRangeStmt,
     ForStmt, WhileStmt,
     TryStmt, DefStmt, ReturnStmt, BreakStmt, ContinueStmt, PassStmt,
     ExprStmt, PyBlockStmt, BringStmt, BringFromStmt, StructStmt, AddToStmt,
+    WindowStmt,
     NumExpr, StrExpr, BoolExpr, NoneExpr,
     ListExpr, DictExpr, VarExpr,
     BinOpExpr, UnaryExpr, CallExpr, IndexExpr, AttrExpr, PyBlockExpr,
-    WhereExpr,
+    WhereExpr, WidgetExpr,
 )
+
+# Modifiers that can follow a widget call: btn("x") on_click(fn) place(10, 20)
+_WIDGET_MODS = frozenset({"on_click", "place", "on_change", "on_input"})
 
 
 class Parser:
@@ -38,8 +32,6 @@ class Parser:
     def __init__(self, tokens: List[Token]):
         self._toks = tokens
         self._pos  = 0
-
-    # ── navigation ────────────────────────────────────────────────────────────
 
     def _t(self) -> Token:
         return self._toks[self._pos] if self._pos < len(self._toks) else self._toks[-1]
@@ -67,16 +59,13 @@ class Parser:
     def _is_p(self, *chars: str) -> bool:
         return self._t().type == "PUNCT" and self._t().value in chars
 
-    # ── error helpers ─────────────────────────────────────────────────────────
-
     def _need_kw(self, word: str) -> Token:
         if not self._is_kw(word):
             t = self._t()
             raise NyxError("SyntaxError", f"Expected '{word}', got '{t.value}'",
-                           t.line, t.col, t.raw,
-                           hint=f"Write '{word}' here")
+                           t.line, t.col, t.raw, hint=f"Write '{word}' here")
         return self._adv()
-    # Keywords that can NEVER be used as names — they are structural syntax
+
     _RESERVED_NAMES = frozenset({
         "let", "when", "if", "elif", "else", "otherwise",
         "for", "in", "while", "repeat", "to",
@@ -89,18 +78,13 @@ class Parser:
         "true", "false", "none",
         "python",
         "break", "continue", "pass",
-        # Note: 'each' and 'add' are NOT here — they can be used as names
-        # 'each' needs to work as a variable inside 'where' (item alias)
-        # 'add' needs to work as a user-defined function name
+        "create",
     })
 
     def _need_id(self) -> str:
         t = self._t()
-        # IDs are always fine
         if t.type == "ID":
             return self._adv().value
-        # Some keywords can serve as identifiers (function/variable names)
-        # when unambiguous — e.g.  fn is_empty():  or  let length = 5
         if t.type == "KW" and t.value not in self._RESERVED_NAMES:
             return self._adv().value
         raise NyxError("SyntaxError", f"Expected a name, got '{t.value}'",
@@ -111,17 +95,12 @@ class Parser:
         if not self._is_p(ch):
             t = self._t()
             if ch == ":" and t.type in ("NL", "INDENT", "DEDENT", "EOF"):
-                raise NyxError(
-                    "SyntaxError",
-                    "Missing ':' at the end of the line",
-                    t.line, t.col, t.raw,
-                    "Add ':' to open the block — e.g.  when x > 3:",
-                )
+                raise NyxError("SyntaxError", "Missing ':' at the end of the line",
+                               t.line, t.col, t.raw,
+                               "Add ':' to open the block — e.g.  when x > 3:")
             raise NyxError("SyntaxError", f"Expected '{ch}', got '{t.value}'",
                            t.line, t.col, t.raw, f"Add '{ch}' here")
         return self._adv()
-
-    # ── top-level ─────────────────────────────────────────────────────────────
 
     def parse(self) -> List[Node]:
         stmts = []
@@ -132,8 +111,6 @@ class Parser:
                 stmts.append(s)
             self._skip("NL", "DEDENT")
         return stmts
-
-    # ── indented block ────────────────────────────────────────────────────────
 
     def _block(self) -> List[Node]:
         stmts = []
@@ -153,8 +130,6 @@ class Parser:
             self._adv()
         return stmts
 
-    # ── statements ────────────────────────────────────────────────────────────
-
     def _stmt(self) -> Optional[Node]:
         self._skip("NL", "DEDENT")
         t = self._t()
@@ -168,40 +143,23 @@ class Parser:
 
         if t.type == "KW":
             v = t.value
-
-            # ── conditionals: Nyxel style + classic aliases ──────────────────
-            if v in ("when", "if"):       return self._when()
-
-            # ── loops ────────────────────────────────────────────────────────
-            if v == "repeat":             return self._repeat()
-            if v == "for":                return self._for()
-            if v == "while":              return self._while()
-
-            # ── list helpers ──────────────────────────────────────────────────
-            if v == "add":                return self._add_to()
-
-            # ── error handling ────────────────────────────────────────────────
-            if v == "try":                return self._try()
-
-            # ── functions: Nyxel style + classic alias ────────────────────────
-            if v in ("fn", "def"):        return self._fn()
-
-            # ── modules ───────────────────────────────────────────────────────
-            if v == "bring":              return self._bring()
-
-            # ── structs ───────────────────────────────────────────────────────
-            if v == "struct":             return self._struct()
-
-            # ── other ─────────────────────────────────────────────────────────
-            if v == "let":                return self._let()
-            if v == "return":             return self._return()
+            if v in ("when", "if"):   return self._when()
+            if v == "repeat":         return self._repeat()
+            if v == "for":            return self._for()
+            if v == "while":          return self._while()
+            if v == "add":            return self._add_to()
+            if v == "try":            return self._try()
+            if v in ("fn", "def"):    return self._fn()
+            if v == "bring":          return self._bring()
+            if v == "struct":         return self._struct()
+            if v == "let":            return self._let()
+            if v == "return":         return self._return()
+            if v == "create":         return self._create_window()
             if v == "break":    self._adv(); self._skip("NL"); return BreakStmt()
             if v == "continue": self._adv(); self._skip("NL"); return ContinueStmt()
             if v == "pass":     self._adv(); self._skip("NL"); return PassStmt()
 
         return self._assign_or_expr()
-
-    # ── let ───────────────────────────────────────────────────────────────────
 
     def _let(self) -> LetStmt:
         self._adv()
@@ -214,8 +172,6 @@ class Parser:
         expr = self._expr()
         self._skip("NL")
         return LetStmt(name, expr)
-
-    # ── assignment or expression statement ────────────────────────────────────
 
     def _assign_or_expr(self) -> Node:
         if self._t().type == "ID":
@@ -254,20 +210,8 @@ class Parser:
         expr = self._expr(); self._skip("NL")
         return ExprStmt(expr)
 
-    # ── when / if ─────────────────────────────────────────────────────────────
-
     def _when(self) -> IfStmt:
-        """
-        Parse both Nyxel-style and classic conditionals:
-
-          when x > 3:              if x > 3:
-              ...                      ...
-          otherwise when x == 3:   elif x == 3:
-              ...                      ...
-          otherwise:               else:
-              ...                      ...
-        """
-        self._adv()                         # consume 'when' or 'if'
+        self._adv()
         cond = self._expr()
         self._need_p(":")
         body = self._block()
@@ -275,61 +219,42 @@ class Parser:
         else_body = []
 
         while True:
-            # ── Nyxel style: otherwise when … / otherwise: ────────────────
             if self._is_kw("otherwise"):
                 saved = self._pos
-                self._adv()                 # consume 'otherwise'
-
+                self._adv()
                 if self._is_kw("when"):
-                    self._adv()             # consume 'when'
+                    self._adv()
                     ec = self._expr()
                     self._need_p(":")
                     elifs.append((ec, self._block()))
                     continue
-
                 if self._is_p(":"):
-                    self._adv()             # consume ':'
+                    self._adv()
                     else_body = self._block()
                     break
-
-                # 'otherwise' not followed by 'when' or ':' → roll back
                 self._pos = saved
                 break
-
-            # ── Classic alias: elif / else ─────────────────────────────────
             elif self._is_kw("elif"):
                 self._adv()
                 ec = self._expr()
                 self._need_p(":")
                 elifs.append((ec, self._block()))
                 continue
-
             elif self._is_kw("else"):
                 self._adv()
                 self._need_p(":")
                 else_body = self._block()
                 break
-
             else:
                 break
 
         return IfStmt(cond, body, elifs, else_body)
 
-    # ── repeat ────────────────────────────────────────────────────────────────
-
     def _repeat(self) -> Node:
-        """
-        repeat 5:              — basic counted loop
-        repeat 5 as i:         — counted loop, i = current index (0-based)
-        repeat i from 1 to 5:  — range loop, i goes 1 … 5 inclusive
-        """
-        self._adv()                         # consume 'repeat'
-
-        # Detect  repeat var from start to end:
-        # Heuristic: next token is ID followed by 'from'
+        self._adv()
         if self._t().type == "ID" and \
            self._peek().type == "KW" and self._peek().value == "from":
-            var   = self._adv().value       # consume var name
+            var   = self._adv().value
             self._need_kw("from")
             start = self._expr()
             self._need_kw("to")
@@ -337,70 +262,39 @@ class Parser:
             self._need_p(":")
             return RepeatRangeStmt(var, start, end, self._block())
 
-        # Otherwise: repeat expr  [as var]:
         count  = self._expr()
         as_var = None
-
         if self._is_kw("as"):
-            self._adv()                     # consume 'as'
+            self._adv()
             as_var = self._need_id()
-
         self._need_p(":")
         return RepeatStmt(count, self._block(), as_var=as_var)
 
-    # ── for / for each ────────────────────────────────────────────────────────
-
     def _for(self) -> ForStmt:
-        """
-        Parse both:
-            for x in list:       standard form
-            for each x in list:  Nyxel preferred form — reads like English
-        """
-        self._adv()                         # consume 'for'
-
-        # 'for each' — consume the 'each' keyword
+        self._adv()
         if self._is_kw("each"):
-            self._adv()                     # consume 'each'
-
+            self._adv()
         var = self._need_id()
         self._need_kw("in")
         iterable = self._expr(); self._need_p(":")
         return ForStmt(var, iterable, self._block())
 
-    # ── add … to ──────────────────────────────────────────────────────────────
-
     def _add_to(self) -> AddToStmt:
-        """
-        add value to list_name
-
-        Natural-language sugar for appending to a list.
-        Beginners shouldn't need to know about .append().
-
-            let scores = []
-            add 99 to scores
-            add result to scores
-        """
-        self._adv()                         # consume 'add'
+        self._adv()
         value_expr = self._expr()
         self._need_kw("to")
         t = self._t()
         if t.type != "ID":
-            raise NyxError("SyntaxError",
-                           "Expected a list name after 'to'",
-                           t.line, t.col, t.raw,
-                           "Write:  add value to my_list")
+            raise NyxError("SyntaxError", "Expected a list name after 'to'",
+                           t.line, t.col, t.raw, "Write:  add value to my_list")
         list_name = self._adv().value
         self._skip("NL")
         return AddToStmt(value_expr, list_name)
-
-    # ── while ─────────────────────────────────────────────────────────────────
 
     def _while(self) -> WhileStmt:
         self._adv()
         cond = self._expr(); self._need_p(":")
         return WhileStmt(cond, self._block())
-
-    # ── try / catch / finally ─────────────────────────────────────────────────
 
     def _try(self) -> TryStmt:
         self._adv()
@@ -427,19 +321,12 @@ class Parser:
             raise NyxError("SyntaxError",
                            "try block needs at least a catch or finally clause",
                            t.line, t.col, t.raw,
-                           hint="Add  catch e:  to handle errors, or  finally:  to always run cleanup")
+                           hint="Add  catch e:  to handle errors, or  finally:  for cleanup")
 
         return TryStmt(body, catch_var, catch_body, finally_body)
 
-    # ── fn / def ──────────────────────────────────────────────────────────────
-
     def _fn(self) -> DefStmt:
-        """
-        Parse both:
-            fn add(a, b):    (Nyxel style — preferred)
-            def add(a, b):   (classic alias — still valid)
-        """
-        self._adv()                         # consume 'fn' or 'def'
+        self._adv()
         name = self._need_id()
         self._need_p("(")
 
@@ -458,11 +345,8 @@ class Parser:
         self._need_p(":")
         return DefStmt(name, params, self._block())
 
-    # ── bring ─────────────────────────────────────────────────────────────────
-
     def _bring(self) -> Node:
         self._adv()
-
         t = self._t()
         if t.type not in ("ID", "KW"):
             raise NyxError("SyntaxError", "Expected a name after 'bring'",
@@ -499,8 +383,6 @@ class Parser:
         module_name, alias = names[0]
         self._skip("NL")
         return BringStmt(module_name, alias)
-
-    # ── struct ────────────────────────────────────────────────────────────────
 
     def _struct(self) -> StructStmt:
         self._adv()
@@ -540,14 +422,46 @@ class Parser:
 
         return StructStmt(name, fields)
 
-    # ── return ────────────────────────────────────────────────────────────────
-
     def _return(self) -> ReturnStmt:
         self._adv()
         if self._t().type in ("NL", "EOF", "DEDENT"):
             return ReturnStmt(NoneExpr())
         expr = self._expr(); self._skip("NL")
         return ReturnStmt(expr)
+
+    def _create_window(self) -> WindowStmt:
+        """
+        create window("title") size(width, height):
+            body
+
+        size(...) is optional; defaults to 800x600.
+        """
+        self._adv()  # consume 'create'
+
+        t = self._t()
+        if not (t.type == "ID" and t.value == "window"):
+            raise NyxError("SyntaxError",
+                           f"Expected 'window' after 'create', got '{t.value}'",
+                           t.line, t.col, t.raw,
+                           hint="Write:  create window(\"My App\") size(800, 600):")
+        self._adv()  # consume 'window'
+        self._need_p("(")
+        title = self._expr()
+        self._need_p(")")
+
+        width  = NumExpr(800)
+        height = NumExpr(600)
+        if self._t().type == "ID" and self._t().value == "size":
+            self._adv()  # consume 'size'
+            self._need_p("(")
+            width  = self._expr()
+            self._need_p(",")
+            height = self._expr()
+            self._need_p(")")
+
+        self._need_p(":")
+        body = self._block()
+        return WindowStmt(title, width, height, body)
 
     # ══════════════════════════════════════════════════════════════════════════
     #  EXPRESSION HIERARCHY  (precedence low → high)
@@ -556,22 +470,11 @@ class Parser:
     def _expr(self) -> Node:
         return self._where()
 
-    # ── where (lowest precedence — wraps a whole expression) ─────────────────
-
     def _where(self) -> Node:
-        """
-        collection where condition
-
-        The condition is evaluated for each item in the collection.
-        Item fields are automatically in scope.
-
-            let adults = people where age >= 18
-            let active = users where active == true and score > 50
-        """
         left = self._or()
         if self._is_kw("where"):
             self._adv()
-            condition = self._or()          # condition has same precedence as or
+            condition = self._or()
             return WhereExpr(left, condition)
         return left
 
@@ -641,6 +544,7 @@ class Parser:
                 self._adv()
                 idx = self._expr(); self._need_p("]")
                 node = IndexExpr(node, idx)
+
             elif self._is_p("."):
                 self._adv()
                 attr = self._t().value; self._adv()
@@ -650,12 +554,32 @@ class Parser:
                     node = CallExpr(AttrExpr(node, attr), args)
                 else:
                     node = AttrExpr(node, attr)
+
             elif self._is_p("("):
                 self._adv()
                 args = self._call_args()
                 node = CallExpr(node, args)
+
             else:
-                break
+                # Widget modifier chain: btn("x") on_click(fn) place(10, 20)
+                # Recognised only when following a CallExpr whose func is a bare name.
+                if (isinstance(node, CallExpr) and
+                        isinstance(node.func, VarExpr) and
+                        self._t().type == "ID" and
+                        self._t().value in _WIDGET_MODS and
+                        self._peek().type == "PUNCT" and self._peek().value == "("):
+                    mods = []
+                    while (self._t().type == "ID" and
+                           self._t().value in _WIDGET_MODS and
+                           self._peek().type == "PUNCT" and self._peek().value == "("):
+                        mod_name = self._adv().value
+                        self._adv()  # (
+                        mod_args = self._call_args()
+                        mods.append((mod_name, mod_args))
+                    node = WidgetExpr(node.func.name, node.args, mods)
+                else:
+                    break
+
         return node
 
     def _call_args(self) -> list:
@@ -670,12 +594,9 @@ class Parser:
     def _atom(self) -> Node:
         t = self._t()
 
-        if t.type == "PYBLOCK":
-            self._adv(); return PyBlockExpr(t.value)
-        if t.type == "NUM":
-            self._adv(); return NumExpr(t.value)
-        if t.type == "STR":
-            self._adv(); return StrExpr(t.value)
+        if t.type == "PYBLOCK": self._adv(); return PyBlockExpr(t.value)
+        if t.type == "NUM":     self._adv(); return NumExpr(t.value)
+        if t.type == "STR":     self._adv(); return StrExpr(t.value)
 
         if t.type == "KW":
             v = t.value
@@ -686,8 +607,6 @@ class Parser:
         if t.type == "ID":
             self._adv(); return VarExpr(t.value)
 
-        # Non-reserved keywords can also be used as variable names in expressions
-        # e.g.  return add  when 'add' is a function defined by the user
         if t.type == "KW" and t.value not in self._RESERVED_NAMES:
             self._adv(); return VarExpr(t.value)
 
