@@ -43,6 +43,11 @@ Programming shouldn't take days of studying it needs to be simple and easy.
 
 Python 3.10 or higher, thats it.
 
+(Optional for arabic:
+```bash
+pip install arabic-reshaper python-bidi
+```
+)
 
 ## Run a script
 
