@@ -24,7 +24,7 @@ from .nyx_ast import (
 )
 
 # Modifiers that can follow a widget call: btn("x") on_click(fn) place(10, 20)
-_WIDGET_MODS = frozenset({"on_click", "place", "on_change", "on_input"})
+_WIDGET_MODS = frozenset({"on_click", "place", "color", "on_change", "on_input"})
 
 
 class Parser:
