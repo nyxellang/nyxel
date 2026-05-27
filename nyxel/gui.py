@@ -8,54 +8,27 @@ except ImportError:
 
 from .errors import NyxError
 
-# ── defaults ──────────────────────────────────────────────────────────────────
-
-_DEFAULT_BTN_COLOR  = "#7c6af7"
-_DEFAULT_TEXT_COLOR = "#cdd6f4"
-_DEFAULT_BG         = "#1e1e2e"
-_DEFAULT_SURFACE    = "#2a2a3e"
-_DEFAULT_FG_DIM     = "#6c7086"
-
-# Named colour aliases so users don't have to remember hex
 _NAMED_COLORS = {
-    "purple":    "#7c6af7",
-    "blue":      "#5a9cf8",
-    "green":     "#a6e3a1",
-    "red":       "#f38ba8",
-    "orange":    "#fab387",
-    "yellow":    "#f9e2af",
-    "pink":      "#f5c2e7",
-    "teal":      "#94e2d5",
-    "white":     "#cdd6f4",
-    "gray":      "#6c7086",
-    "grey":      "#6c7086",
-    "black":     "#1e1e2e",
+    "purple": "#7c6af7", "blue":   "#3b8ed0", "green":  "#2fa572",
+    "red":    "#e05252", "orange": "#e07b39", "yellow": "#d4a017",
+    "pink":   "#d45d9b", "teal":   "#2a9d8f", "white":  "#ffffff",
+    "gray":   "#6c7086", "grey":   "#6c7086", "black":  "#1a1a1a",
 }
-
-_AR_FONTS = ["Noto Sans Arabic", "Tahoma", "Arabic Typesetting",
-             "Arial Unicode MS", "Arial"]
 
 
 def _resolve_color(c: str) -> str:
-    if not isinstance(c, str):
-        return _DEFAULT_BTN_COLOR
-    low = c.strip().lower()
-    return _NAMED_COLORS.get(low, c)
+    return _NAMED_COLORS.get(str(c).strip().lower(), c)
 
 
 def _arabic(text: str) -> bool:
-    return any("\u0600" <= ch <= "\u06FF" or
-               "\u0750" <= ch <= "\u077F" or
-               "\uFB50" <= ch <= "\uFDFF" or
-               "\uFE70" <= ch <= "\uFEFF"
+    return any("\u0600" <= ch <= "\u06FF" or "\uFB50" <= ch <= "\uFDFF"
                for ch in str(text))
 
 
 def _fix_arabic(text: str) -> str:
     """
-    Reshape + bidi-reorder Arabic text.
-    CTK inherits tkinter's lack of bidirectional support, so this is still needed.
-    Requires:  pip install arabic-reshaper python-bidi
+    Reshape + bidi-reorder Arabic for CTK (which inherits tkinter's lack of
+    bidirectional support).  Requires:  pip install arabic-reshaper python-bidi
     """
     if not _arabic(text):
         return text
@@ -66,23 +39,6 @@ def _fix_arabic(text: str) -> str:
     except ImportError:
         return text
 
-
-def _font(size: int = 13, bold: bool = False):
-    weight = "bold" if bold else "normal"
-    if ctk is None:
-        return None
-    for name in _AR_FONTS:
-        try:
-            import tkinter.font as tkfont
-            f = tkfont.Font(family=name, size=size, weight=weight)
-            if f.actual("family").lower() not in ("", "helvetica"):
-                return ctk.CTkFont(family=name, size=size, weight=weight)
-        except Exception:
-            continue
-    return ctk.CTkFont(size=size, weight=weight)
-
-
-# ── widget wrapper ────────────────────────────────────────────────────────────
 
 class NyxWidget:
     __slots__ = ("_kind", "_tk")
@@ -103,19 +59,14 @@ class NyxWidget:
         if name in ("_kind", "_tk"):
             object.__setattr__(self, name, val); return
         if name == "text":
-            fixed = _fix_arabic(str(val))
-            try:
-                self._tk.configure(text=fixed)
-            except Exception:
-                pass
+            try:    self._tk.configure(text=_fix_arabic(str(val)))
+            except Exception: pass
             return
         raise NyxError("GUIError", f"Widget has no settable property '{name}'")
 
     def __repr__(self) -> str:
         return f"<{self._kind} widget>"
 
-
-# ── widget builder ────────────────────────────────────────────────────────────
 
 class NyxWidgetBuilder:
     __slots__ = ("_window", "_kind", "_args", "_on_click", "_x", "_y",
@@ -145,7 +96,7 @@ class NyxWidgetBuilder:
                                hint='Write: color("#ff0000")  or  color("red")')
             self._color = _resolve_color(str(args[0]))
         else:
-            raise NyxError("GUIError", f"Unknown widget modifier '{name}'",
+            raise NyxError("GUIError", f"Unknown modifier '{name}'",
                            hint="Known modifiers: on_click  place  color")
 
     def build(self) -> NyxWidget:
@@ -156,51 +107,31 @@ class NyxWidgetBuilder:
         color  = self._color
 
         if kind == "btn":
-            fg    = color or _DEFAULT_BTN_COLOR
-            hover = _darken(fg)
-            w = ctk.CTkButton(
-                root, text=text,
-                fg_color=fg, hover_color=hover,
-                text_color="#ffffff",
-                font=_font(13, bold=True),
-                corner_radius=8, height=36,
-            )
+            kw = {"fg_color": color, "hover_color": _darken(color)} if color else {}
+            w  = ctk.CTkButton(root, text=text, **kw)
             if self._on_click is not None:
                 fn = self._on_click
                 w.configure(command=lambda fn=fn: _safe_call(interp, fn))
 
         elif kind == "label":
-            w = ctk.CTkLabel(
-                root, text=text,
-                text_color=color or _DEFAULT_TEXT_COLOR,
-                font=_font(13),
-                anchor="e" if _arabic(text) else "w",
-                justify="right" if _arabic(text) else "left",
-            )
+            kw = {"text_color": color} if color else {}
+            w  = ctk.CTkLabel(root, text=text,
+                              anchor="e" if _arabic(text) else "w",
+                              justify="right" if _arabic(text) else "left", **kw)
 
         elif kind == "dim_label":
-            w = ctk.CTkLabel(
-                root, text=text,
-                text_color=color or _DEFAULT_FG_DIM,
-                font=_font(11),
-                anchor="e" if _arabic(text) else "w",
-                justify="right" if _arabic(text) else "left",
-            )
+            kw = {"text_color": color or "gray"}
+            w  = ctk.CTkLabel(root, text=text, font=ctk.CTkFont(size=11),
+                              anchor="e" if _arabic(text) else "w",
+                              justify="right" if _arabic(text) else "left", **kw)
 
         elif kind in ("input", "input_field"):
-            w = ctk.CTkEntry(
-                root,
-                placeholder_text=text,
-                fg_color=_DEFAULT_SURFACE,
-                border_color=color or "#444466",
-                text_color=_DEFAULT_TEXT_COLOR,
-                font=_font(13),
-                corner_radius=8, height=36,
-                justify="right" if _arabic(text) else "left",
-            )
+            kw = {"border_color": color} if color else {}
+            w  = ctk.CTkEntry(root, placeholder_text=text,
+                              justify="right" if _arabic(text) else "left", **kw)
 
         elif kind == "separator":
-            w = ctk.CTkFrame(root, height=2, fg_color=color or "#444466",
+            w = ctk.CTkFrame(root, height=2, fg_color=color or "gray30",
                              corner_radius=0)
 
         else:
@@ -216,14 +147,10 @@ class NyxWidgetBuilder:
 
 
 def _darken(hex_color: str) -> str:
-    """Return a slightly darker shade of a hex color for button hover."""
     try:
         h = hex_color.lstrip("#")
-        if len(h) != 6:
-            return hex_color
         r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-        r, g, b = max(0, r - 30), max(0, g - 30), max(0, b - 30)
-        return f"#{r:02x}{g:02x}{b:02x}"
+        return f"#{max(0,r-30):02x}{max(0,g-30):02x}{max(0,b-30):02x}"
     except Exception:
         return hex_color
 
@@ -234,8 +161,6 @@ def _safe_call(interp, fn) -> None:
     except Exception as e:
         print(f"\n  GUIError in callback: {e}")
 
-
-# ── window ────────────────────────────────────────────────────────────────────
 
 class NyxWindow:
     __slots__ = ("root",)
@@ -251,7 +176,6 @@ class NyxWindow:
         root.geometry(f"{int(width)}x{int(height)}")
         root.resizable(True, True)
         root.minsize(300, 200)
-        root.configure(fg_color=_DEFAULT_BG)
         self.root = root
 
     def run(self) -> None:
