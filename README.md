@@ -33,6 +33,8 @@
 Nyxel is a simple, high-level programming language designed to be easy to read, and understand.
 You just need to understand English or Arabic and you'd be set.
 
+### Now it has GUI support :P
+
 The philosophy of nyxel is that programming should be easy for everyone not just people who want to continue in tech
 Programming shouldn't take days of studying it needs to be simple and easy.
 
