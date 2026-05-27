@@ -41,7 +41,7 @@ Programming shouldn't take days of studying it needs to be simple and easy.
 ## Requirements
 
 
-Python 3.10 or higher, thats it.
+Python 3.10 or higher, and CustomTKinter for the GUI
 
 (Optional for arabic:
 ```bash
