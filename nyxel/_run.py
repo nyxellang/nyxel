@@ -866,6 +866,13 @@ def __nyx_runtime(script_args: Optional[list] = None) -> dict:
     g["بيئة"]        = lambda k, d="": os.environ.get(k, d)
     g["نفذ"]         = _run_command
     g["موجود"]       = os.path.exists
+    g["انتظر"]       = _wait
+    g["وقت"]         = _time_now
+    g["تاريخ"]       = _date
+    g["استمع"]       = _listen_key
+    g["عند_المفتاح"] = _on_key
+    g["إنهاء"]       = sys.exit
+    g["أنهِ"]        = sys.exit
     g["صحيح"]        = True
     g["خطأ"]         = False
     g["لاشيء"]       = None

@@ -603,19 +603,18 @@ For checking or converting types, Nyxel keeps things painless and simple:
 # System Stuff
 
 
-Do you want to execute shell commands or read environment variables? How about checking files? Here’s how:
+Do you want to execute shell commands or read environment variables? How about checking files? Here's how:
 
 - `run(cmd)` – Runs a shell command and gives you the output as plain text.  
 - `run_lines(cmd)` – Runs a shell command and gives you the output as a list of lines.  
-- `env(key, default?)` – Reads an environment variable. If it’s not set, you can give it a default.  
+- `env(key, default?)` – Reads an environment variable. If it's not set, you can give it a default.  
 - `args` – Lists all command-line arguments passed to your script.  
 - `exists(path)` – Checks if a file or directory exists.  
-- `ls(path?)` – Lists what’s in a directory. If you don’t give it a path, it’ll use the current one.  
+- `ls(path?)` – Lists what's in a directory. If you don't give it a path, it'll use the current one.  
 - `mkdir(path)` – Creates a directory, along with any parent directories needed.  
 - `cwd()` – Shows the current working directory.  
 - `sleep(seconds)` – Pauses things for a while.  
-- `time()` – Gives you the current Unix timestamp.  
-- `exit(code?)` – Quits the program. You can set an exit code if you need to.  
+- `exit(code?)` / `quit_app()` – Quits the program. You can set an exit code if you need to.
 
 # Examples
 
@@ -628,6 +627,191 @@ say(output)
 let files = run_lines("ls")
 for f in files:
     say(f)
+```
+
+## Environment variables
+
+```nyxel
+let token = env("API_TOKEN")
+let host  = env("HOST", "localhost")  # uses "localhost" if HOST isn't set
+```
+
+# Time & Date
+
+| Function | Description |
+|---|---|
+| `time()` | Seconds since epoch as a float. Good for timing things. |
+| `unix()` | Seconds since epoch rounded as an integer. |
+| `date()` | A date/time object with fields and methods (see below). |
+| `wait(n, unit?)` | Pause for `n` seconds (default), `"ms"`, or `"minutes"`. |
+
+```nyxel
+let t0 = time()
+wait(2)
+say(time() - t0)           # ≈ 2.0
+
+wait(500, "ms")             # half a second
+wait(1, "minutes")
+```
+
+## date() methods and fields
+
+| Member | Description |
+|---|---|
+| `.year` | e.g. 2026 |
+| `.month` | e.g. 5 |
+| `.day` | e.g. 27 |
+| `.hour` | e.g. 20 |
+| `.weekday` | e.g. "Tuesday" |
+| `.unix` | integer timestamp |
+| `.format(fmt)` | strftime-like formatting |
+| `str(d)` | e.g. "May 27, 2026  08:01 PM" |
+
+```nyxel
+let d = date()
+say(d.year, d.month, d.day)       # 2026 5 27
+say(d.weekday)                     # Tuesday
+say(d.format("%d/%m/%Y"))          # 27/05/2026
+say(str(d))                        # May 27, 2026  08:01 PM
+```
+
+# GUI
+
+Requires: `pip install customtkinter`
+
+For Arabic text: `pip install arabic-reshaper python-bidi`
+
+Create windows with buttons, labels, inputs, and more using the `gui` module.
+
+```nyxel
+bring gui
+
+let win = gui.window("My App", 800, 600)
+
+fn on_click():
+    lbl.text = "clicked!"
+
+let lbl = win.add(gui.label("Hello"))
+win.add(gui.btn("Click me").color("green").on_click(on_click))
+win.run()
+```
+
+## Widget types
+
+| Builder | Description |
+|---|---|
+| `gui.btn("text")` | A clickable button. |
+| `gui.label("text")` | A text label. |
+| `gui.dim_label("text")` | A dim/gray low-profile label. |
+| `gui.input("placeholder")` | A text input field. |
+| `gui.textbox(height)` | A multi-line text display (append-only). |
+| `gui.checkbox("text")` | A checkable box. |
+| `gui.switch("text")` | An on/off toggle switch. |
+| `gui.slider(lo, hi)` | A draggable slider between lo and hi. |
+| `gui.progressbar()` | An indeterminate progress bar. |
+| `gui.dropdown("a", "b", ...)` | A dropdown menu. |
+| `gui.radio("text", "group")` | A radio button within a group. |
+| `gui.separator()` | A horizontal line. |
+
+## Chaining methods
+
+Every builder supports these chainable methods:
+
+| Method | Description |
+|---|---|
+| `.color("green")` | Set the widget's accent color. |
+| `.on_click(fn)` | Call `fn` when clicked (buttons, checkboxes, radios). |
+| `.on_change(fn)` | Call `fn` when value changes (checkboxes, switches, sliders, dropdowns). |
+| `.place(x, y)` | Position at pixel coordinates instead of default packing. |
+
+```nyxel
+win.add(gui.btn("Save").color("green").on_click(save_fn).place(20, 50))
+```
+
+## Window methods
+
+| Method | Description |
+|---|---|
+| `win.add(builder)` | Add a widget to the window. Returns a live handle. |
+| `win.on_key("escape", fn)` | Call `fn` when a key is pressed. |
+| `win.run()` | Start the GUI event loop (blocks until closed). |
+| `win.quit()` | Close the window and exit the app. |
+
+## Widget handles
+
+`win.add()` returns a handle you can use to read or update the widget later:
+
+| Property / Method | Description |
+|---|---|
+| `.text` | Read or set the label text. |
+| `.value` | Read or set the value (slider: float, input: string, checkbox/switch: bool). |
+| `.checked` | Read the boolean state of a checkbox or switch. |
+| `.append(text)` | Add text to a textbox (new line). |
+| `.clear()` | Clear a textbox's contents. |
+
+```nyxel
+bring gui
+
+let win = gui.window("Counter", 300, 200)
+let count = 0
+
+fn on_add():
+    count = count + 1
+    lbl.text = "Count: " + to_str(count)
+
+let lbl = win.add(gui.label("Count: 0"))
+win.add(gui.btn("Add").on_click(on_add))
+win.add(gui.btn("Reset").color("red").on_click(fn ():
+    count = 0
+    lbl.text = "Count: 0"
+end))
+win.run()
+```
+
+# Key Listening
+
+Requires: `pip install readchar`
+
+Listen for key presses in the terminal (CLI mode, no GUI needed).
+
+| Function | Description |
+|---|---|
+| `listen_key()` | Blocks until a key is pressed. Returns the key name. |
+| `on_key(key)` | Blocks until the given key is pressed, returns `true`. |
+
+```nyxel
+# Wait for a single key press
+let k = listen_key()
+say("You pressed:", k)
+```
+
+`listen_key()` returns these values:
+
+| Key | Returns |
+|---|---|
+| Letters / numbers | The character itself (e.g. `"a"`, `"3"`) |
+| Enter | `"enter"` |
+| Space | `"space"` |
+| Backspace | `"backspace"` |
+| Tab | `"tab"` |
+| Escape | `"escape"` |
+| Arrow keys | `"up"`, `"down"`, `"left"`, `"right"` |
+| Ctrl+A through Ctrl+Z | `"ctrl+a"` … `"ctrl+z"` |
+| Ctrl+C | `"ctrl+c"` |
+
+```nyxel
+# Quit on Escape
+while true:
+    let k = listen_key()
+    when k == "escape":
+        say("Goodbye!")
+        exit()
+
+# Using on_key
+say("Press Q to quit")
+on_key("q")
+say("Quitting...")
+exit()
 ```
 
 ## Environment variables
@@ -685,7 +869,13 @@ If you'd rather use Arabic because lets say you are learning Arabic and trying t
 - `و` = and  
 - `أو` = or  
 - `ليس` = not  
-- `حيث` = where  
+- `حيث` = where
+- `وقت` = time
+- `تاريخ` = date
+- `انتظر` = wait
+- `استمع` = listen_key
+- `عند_المفتاح` = on_key
+- `إنهاء` / `أنهِ` = exit / quit_app  
 
 ## Example
 
