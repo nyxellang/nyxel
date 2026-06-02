@@ -201,8 +201,9 @@ def __nyx_bring__(module_name: str) -> NyxObject:
 
         source = path.read_text(encoding="utf-8")
         tokens = lex(source, str(path))
-        stmts = Parser(tokens).parse()
-        py_source = transpile(stmts)
+        parser = Parser(tokens)
+        stmts = parser.parse()
+        py_source = transpile(stmts, str(path))
 
         mod_g = __nyx_runtime([])
         pre_keys = set(mod_g.keys())

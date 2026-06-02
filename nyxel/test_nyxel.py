@@ -33,8 +33,9 @@ def run(code: str) -> dict:
         type_error_add_hint, suggest_attr, suggest_callable,
     )
     tokens = lex(code)
-    stmts  = Parser(tokens).parse()
-    py_source = transpile(stmts)
+    parser = Parser(tokens)
+    stmts  = parser.parse()
+    py_source = transpile(stmts, "<test>")
     g = __nyx_runtime([])
     try:
         exec(compile(py_source, "<test>", "exec"), g)

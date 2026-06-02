@@ -34,8 +34,7 @@ nyx main.nx
 
 ## REPL
 
-Launch REPL with `nyx repl`. You just type and get the result as simple as that.
-
+You can launch the REPL with `nyx repl`. you can use it when testing when you want instant responses
 ## Some commands
 
 
@@ -46,7 +45,7 @@ Launch REPL with `nyx repl`. You just type and get the result as simple as that.
 | `clear` | cleans the screen. |
 | `exit/quit` | Leaves the REPL. |
 
-Samples:
+some examples to test:
 
 ```text
 >>> let x = 10
@@ -56,8 +55,8 @@ Samples:
 >>> say("hello")
 hello
 
->>> fn double(n):
-...     return n * 2
+>>> fn double(num):
+...     return num * 2
 ...
 
 >>> double(7)
@@ -70,13 +69,13 @@ Use `let` when creating a new variable. To change the value of an existing varia
 
 ```Nyxel
 
-let name = "Alice"
+let name = "Nyxel"
 let score = 42
 let active = true
 let data = none
 
 score = score + 10
-name = "Bob"
+name = "bobby"
 ```
 
 # Types & Values
@@ -87,14 +86,14 @@ name = "Bob"
 | `text` | `"hello"`, `'world'` | Double or single quotations to enclose strings. |
 | `bool` | `true`, `false` | Lowercase true or false keywords to define Boolean values. |
 | `none` | `none` | Keyword used to denote. |
-| `list` | `[1, 2, 3]`, `[]` | Items of different types enclosed within square brackets. |
-| `dict` | `{"name": "Alice"}` | Key-value objects with dot access support. |
+| `list` | `[1, 2, 3]`, `[]` | Items in a list useful with JSONs. |
+| `dict` | `{"name": "Nyxel"}` | Key-value objects with dot access support. |
 
 # Strings
 
 ```Nyxel
-let msg = "Hello, World!"
-let multi = "Line one\nLine two"
+let msg = "Hello, Nyxel!"
+let multi_line = "Line no.1\nLine no.2"
 
 # Escape sequences:
 # \n  New line
@@ -122,7 +121,7 @@ add 6 to nums
 # Dicts
 
 ```Nyxel
-let user = {"name": "Alice", "age": 30}
+let user = {"name": "Nyxel", "age": 30}
 
 say(user.name)
 say(user["name"])
@@ -211,10 +210,10 @@ else:
 Loop for lists, ranges, or other values.
 
 ```nyxel
-let fruits = ["apple", "banana", "cherry"]
+let meal_prep = ["Chicken", "Avacado", "vegs"]
 
-for fruit in fruits:
-    say(fruit)
+for i in meal_prep:
+    say(i)
 ```
 
 ```nyxel
@@ -250,10 +249,10 @@ repeat i from 1 to 5:
 The functions can be either created by using fn or def statements. The functions can be used as values and will maintain access to the variables from their scope.
 
 ```nyxel
-fn greet(name):
+fn greeting(name):
     return "Hello, " + name
 
-say(greet("Alice"))   # Hello, Alice
+say(greet("Nyxel"))   # Hello, Nyxel
 ```
 
 ## With default parameters:
@@ -281,16 +280,16 @@ say(counter())   # 2
 ## Passing functions:
 
 ```nyxel
-fn apply(f, x):
+fn multiply(f, x):
     return f(x)
 
-fn double(n): return n * 2
-say(apply(double, 5))   # 10
+fn give_reminder(x, y): return x % y
+say(apply(give_reminder, 5, 2))   # the output: 1
 ```
 
 # Structs
 
-Structs are basic templates for objects. Every single struct maintains its own unique data set.
+Structs are like templates for objects, each one has its own data
 
 ```nyxel
 struct Point:
@@ -300,8 +299,6 @@ y = 0
 
 let a = Point(1, 2)
 let b = Point(3)
-
-# Mutate one instance; the other stays the same.
 
 a.x = 99
 say(b.x)   # 3
@@ -316,8 +313,8 @@ struct User:
     active = true
 
 let users = [
-    User("Alice", 30),
-    User("Bob", 17),
+    User("Nyxel", 30),
+    User("Bobby", 17),
 ]
 
 let adults = users where item.age >= 18
@@ -347,13 +344,13 @@ catch e:
 
 >Note: break, continue, and return always do what you expect even in try blocks :P.
 
-# Modules
+# Modules/Libraries
 
-Use bring to pull in code from other .nx files. Nyxel looks in your current folder.
+You can use `bring` to import a Module
 
 ```nyxel
 
-bring math_utils
+bring math_operators
 say(math_utils.add(1, 2))
 
  # You can bring in with an alias:
@@ -361,11 +358,11 @@ say(math_utils.add(1, 2))
 bring math_utils as m
 say(m.add(1, 2))
 
- # Or just import specific names:
+ # Or just import specific functions (it helps reduce overhead):
 
-bring add from math_utils
+bring add from math_operators
 
-bring add, subtract from math_utils
+bring add, subtract from math_operators
 ```
 
 > Note: Modules are executed only once per program run. Whenever you change a module and then run your program again, Nyxel will notice right away. Circular dependencies are detected and managed.
@@ -373,17 +370,15 @@ bring add, subtract from math_utils
 ## Writing a module:
 
 ```nyxel
-# math_utils.nx
+# math_operators.nx
 fn add(a, b):
     return a + b
 
 fn subtract(a, b):
     return a - b
-
-let PI = 3.14159265
 ```
 
-# Where Filter
+# Where filter
 
 Filter lists easily with where. Inside where, use item for the current value. With structs, you may not even need item but simply use field names.
 
@@ -408,7 +403,7 @@ let long_words = words where item.length > 4
 # Objects — can use item.<field>
 struct User: name / age
 
-let users = [User("Alice", 30), User("Bob", 17)]
+let users = [User("Nyxel", 30), User("Bob", 17)]
 
 let adults  = users where item.age >= 18
  # OR
@@ -460,11 +455,11 @@ end
 say("Score:", 42)         # Score: 42
 say(true, false, none)    # true false none
 
-let user = {"name": "Alice", "age": 30}
+let user = {"name": "Nyxel", "age": 30}
 pretty(user)
 
 # {
-#   "name": "Alice",
+#   "name": "Nyxel",
 #   "age": 30
 # }
 ```
@@ -473,11 +468,11 @@ pretty(user)
 
 - `read(path)`              - Reads the whole file as plain text.  
 - `write(path, text)`       - Writes text to an existing file.  
-- `append(path, text)`      - Adds text to an existing file.  
-- `read_lines(path)`        - Reads a file and returns a list of lines (without leading or trailing whitespace).  
+- `append(path, text)`      - Adds the text you want to the end of a file.  
+- `read_lines(path)`        - Reads a file line pretty simple huh (without leading or trailing whitespace).  
 - `lines_of(text)`          - Breaks up text into lines by new line character.
-- `words_of(text)`          - Breaks up text into words.
-- `save_json(path, data)`   - Converts a list or dict into JSON string and writes it to a file.
+- `words_of(text)`          - Breaks up the words in the text.
+- `save_json(path, data)`   - Converts it into JSON if you need it.
 - `load_json(path)`         - Reads a JSON file and loads it as a Nyxel object or a list.
 - `exists(path)`            - Checks if the file/directory at `path` exists.  
 
@@ -496,7 +491,7 @@ say(res.name, res.email)
 
 let response = post(
     "https://api.example.com/users",
-    {"name": "Alice", "age": 30}
+    {"name": "Nyxel", "age": 1}
 )
 say(response.id)
 
@@ -510,16 +505,16 @@ catch e:
 
 # Maths
 
-- `abs(n)`           - absolute value
-- `round(n)`         - nearest integer
-- `floor(n)`         - round down
-- `ceil(n)`          - round up
-- `sqrt(n)`          - square root
-- `pow(base, exp)`   - power (or just use **)
-- `log(n)`           - natural log
+- `abs(n)`           - absolute value of a value
+- `round(n)`         - rounds it to the closest int
+- `floor(n)`         - rounds down (aka floor division)
+- `ceil(n)`          - rounds up the value (aka round(n) but in a different name)
+- `sqrt(n)`          - square roots the value
+- `pow(base, exp)`   - raises to the power (tip just ** its easier)
+- `log(n)`           - logs the value
 - `pi, e, inf`       - standard constants
 - `rand_int(a, b)`   - random integer, a to b
-- `random()`         - random float, 0.0 to 1.0
+- `random()`         - gives you a random float from 0.0 to 1.0
 - `choice(list)`     - pick random item
 - `shuffle(list)`    - create shuffled copy of a list
 
@@ -535,15 +530,15 @@ In Nyxel, you can mess with text in two ways—either by using string functions 
 | `split(s, sep?)` | `s.split(sep)` | Chops the string into pieces. |
 | `join(sep, list)` | — | Stitches a list back together, using whatever separator you want. |
 | `replace(s, a, b)` | `s.replace(a, b)` | Swaps one chunk of text for another. |
-| `contains(s, sub)` | `s.contains(sub)` | Checks if your text includes something. |
-| `starts_with(s, p)` | `s.starts_with(p)` | Checks how it starts. |
-| `ends_with(s, p)` | `s.ends_with(p)` | Checks how it ends. |
-| — | `s.length` | Gives you the number of characters. |
+| `contains(s, sub)` | `s.contains(sub)` | Checks if the texts has sub items. |
+| `starts_with(s, p)` | `s.starts_with(p)` | Checks how the text starts. |
+| `ends_with(s, p)` | `s.ends_with(p)` | Checks how the text ends. |
+| — | `s.length` | Gives you the amount of characters in the text. |
 
 ```nyxel
-let s = "  Hello, World!  "
-say(strip(s))              # → Hello, World! cleans up any unused spaces
-say(s.upper())             # → HELLO, WORLD!  give you all caps just like you yelling it out
+let s = "  Hello, Nyxel!  "
+say(strip(s))              # → Hello, Nyxel! cleans up any unused spaces
+say(s.upper())             # → HELLO, NYXEL!  give you all caps just like you yelling it out
 say(replace(s, "World", "Nyxel"))
 
 let parts = split("a,b,c", ",")   # ["a", "b", "c"]
@@ -592,9 +587,9 @@ For checking or converting types, Nyxel keeps things painless and simple:
 | `type(x)` |  returns the type of x: "number", "text", "list", "dict", "bool" or "none". |
 | `str(x)` or `to_str(x)` |  turn it into a string. |
 | `int(x)` / `to_int(x)` | turns it into an integer. |
-| `float(x)` / `to_float(x)` |  turns it into a float. |
-| `bool(x)` | turns it into bool true or false. |
-| `is_number(x)`, `is_text(x)` | checks the type. |
+| `float(x)` / `to_float(x)` |  turns the variable into a float. |
+| `bool(x)` | Turns it into a boolen (True or False). |
+| `is_number(x)`, `is_text(x)` | Checks its type (Bool, str, int, float). |
 | `is_even(n)`,`is_odd(n)` | checks the number n to see if it's even/odd. |
 | `is_divisible_by(n, d)` | checks if n is a multiple of d. |
 | `is_empty(x)` | checks whether it's empty, works with lists, text, etc.|
@@ -607,22 +602,22 @@ Do you want to execute shell commands or read environment variables? How about c
 
 - `run(cmd)` – Runs a shell command and gives you the output as plain text.  
 - `run_lines(cmd)` – Runs a shell command and gives you the output as a list of lines.  
-- `env(key, default?)` – Reads an environment variable. If it's not set, you can give it a default.  
+- `env(key, default)` – Reads an environment variable. If it's not set, you can give it a default.  
 - `args` – Lists all command-line arguments passed to your script.  
 - `exists(path)` – Checks if a file or directory exists.  
-- `ls(path?)` – Lists what's in a directory. If you don't give it a path, it'll use the current one.  
-- `mkdir(path)` – Creates a directory, along with any parent directories needed.  
-- `cwd()` – Shows the current working directory.  
+- `ls(path)` – Lists what's in a directory. If you don't give it a path, it'll use the current one.  
+- `mkdir(path)` – Creates a directory (a folder).  
+- `cwd()` – Shows what directory are you working in.  
 - `sleep(seconds)` – Pauses things for a while.  
-- `exit(code?)` / `quit_app()` – Quits the program. You can set an exit code if you need to.
+- `exit(code)` / `quit_app()` – It quits the application
 
 # Examples
 
 ## Shell commands
 
 ```nyxel
-let output = run("ls -la")
-say(output)
+let command = run("ls -lh")
+say(command)
 
 let files = run_lines("ls")
 for f in files:
@@ -640,7 +635,7 @@ let host  = env("HOST", "localhost")  # uses "localhost" if HOST isn't set
 
 | Function | Description |
 |---|---|
-| `time()` | Seconds since epoch as a float. Good for timing things. |
+| `time()` | Gives you the seconds since epoch as a float. |
 | `unix()` | Seconds since epoch rounded as an integer. |
 | `date()` | A date/time object with fields and methods (see below). |
 | `wait(n, unit?)` | Pause for `n` seconds (default), `"ms"`, or `"minutes"`. |
@@ -669,30 +664,26 @@ wait(1, "minutes")
 
 ```nyxel
 let d = date()
-say(d.year, d.month, d.day)       # 2026 5 27
-say(d.weekday)                     # Tuesday
-say(d.format("%d/%m/%Y"))          # 27/05/2026
-say(str(d))                        # May 27, 2026  08:01 PM
+say(d.year, d.month, d.day)        # 2026 5 31
+say(d.weekday)                     # Sunday
+say(d.format("%d/%m/%Y"))          # 31/05/2026
+say(str(d))                        # May 31, 2026  08:01 PM
 ```
 
 # GUI
 
-Requires: `pip install customtkinter`
-
-For Arabic text: `pip install arabic-reshaper python-bidi`
-
-Create windows with buttons, labels, inputs, and more using the `gui` module.
+You can make GUI apps using the module gui in nyxel and it works by using Python's CustomTkinter library
 
 ```nyxel
 bring gui
 
-let win = gui.window("My App", 800, 600)
+let win = gui.window("GUI test for the wiki", 800, 600)
 
-fn on_click():
+fn clicking():
     lbl.text = "clicked!"
 
 let lbl = win.add(gui.label("Hello"))
-win.add(gui.btn("Click me").color("green").on_click(on_click))
+win.add(gui.btn("Click me").color("green").on_click(clicking))
 win.run()
 ```
 
@@ -705,13 +696,13 @@ win.run()
 | `gui.dim_label("text")` | A dim/gray low-profile label. |
 | `gui.input("placeholder")` | A text input field. |
 | `gui.textbox(height)` | A multi-line text display (append-only). |
-| `gui.checkbox("text")` | A checkable box. |
-| `gui.switch("text")` | An on/off toggle switch. |
-| `gui.slider(lo, hi)` | A draggable slider between lo and hi. |
-| `gui.progressbar()` | An indeterminate progress bar. |
-| `gui.dropdown("a", "b", ...)` | A dropdown menu. |
-| `gui.radio("text", "group")` | A radio button within a group. |
-| `gui.separator()` | A horizontal line. |
+| `gui.checkbox("text")` | A box you can check. |
+| `gui.switch("text")` | A toggle switch. |
+| `gui.slider(lo, hi)` | A draggable slider that you can slide. |
+| `gui.progressbar()` | Its just a progressbar. |
+| `gui.dropdown("a", "b", ...)` | A menu that drops down yea. |
+| `gui.radio("text", "group")` | A radio button inside a group. |
+| `gui.separator()` | A horizontal line for separating. |
 
 ## Chaining methods
 
@@ -719,64 +710,65 @@ Every builder supports these chainable methods:
 
 | Method | Description |
 |---|---|
-| `.color("green")` | Set the widget's accent color. |
-| `.on_click(fn)` | Call `fn` when clicked (buttons, checkboxes, radios). |
-| `.on_change(fn)` | Call `fn` when value changes (checkboxes, switches, sliders, dropdowns). |
+| `.color("green")` | changes the colour of an object. |
+| `.on_click(fn)` | It calls a function to do (for btns, radios, and checkboxes). |
+| `.on_change(fn)` | Calls a function to do an the change of the widget (for checkboxes, switches, sliders, and dropdowns). |
 | `.place(x, y)` | Position at pixel coordinates instead of default packing. |
 
 ```nyxel
-win.add(gui.btn("Save").color("green").on_click(save_fn).place(20, 50))
+win.add(gui.btn("Click me!").color("green" or #00FF00).on_click(clicked).place(20, 50))
 ```
 
 ## Window methods
 
 | Method | Description |
 |---|---|
-| `win.add(builder)` | Add a widget to the window. Returns a live handle. |
-| `win.on_key("escape", fn)` | Call `fn` when a key is pressed. |
-| `win.run()` | Start the GUI event loop (blocks until closed). |
-| `win.quit()` | Close the window and exit the app. |
+| `win.add(builder)` | Adds a widget. |
+| `win.on_key("key", fn)` | Calls a function when the key is pressed. |
+| `win.run()` | Starts the GUI in a loop until `win.quit()` is called.  |
+| `win.quit()` | Closes the window/quits the app when called. |
 
 ## Widget handles
 
 `win.add()` returns a handle you can use to read or update the widget later:
 
-| Property / Method | Description |
+| Property | Description |
 |---|---|
 | `.text` | Read or set the label text. |
 | `.value` | Read or set the value (slider: float, input: string, checkbox/switch: bool). |
 | `.checked` | Read the boolean state of a checkbox or switch. |
 | `.append(text)` | Add text to a textbox (new line). |
-| `.clear()` | Clear a textbox's contents. |
+| `.clear()` | Clears the object thats it. |
 
 ```nyxel
-bring gui
+bring gui       # imports the GUI module
 
-let win = gui.window("Counter", 300, 200)
+let win = gui.window("Counter", 300, 200) # assigns it to a var (win) and gives it the width and height 
 let count = 0
 
-fn on_add():
+fn rest_counter():      # creates a function to rest the count num
+    count = 0
+    lbl.text = "Count: " + to_str(count)
+
+fn on_add():        # creates a function for increasing the count num
     count = count + 1
     lbl.text = "Count: " + to_str(count)
 
-let lbl = win.add(gui.label("Count: 0"))
-win.add(gui.btn("Add").on_click(on_add))
-win.add(gui.btn("Reset").color("red").on_click(fn ():
-    count = 0
-    lbl.text = "Count: 0"
-end))
-win.run()
+let lbl = win.add(gui.label("Count: 0"))        # assignes and creates a label
+win.add(gui.btn("Add").on_click(on_add))        # adds a button to the app
+win.add(gui.btn("Reset").color("red").on_click(rest_counter()))
+win.run()   # runs the GUI in a loop
 ```
 
 # Key Listening
 
-Requires: `pip install readchar`
+For key listenign you need to install readchar: `pip install readchar`
 
-Listen for key presses in the terminal (CLI mode, no GUI needed).
+Listens for keys pressed by you (CLI mode, no GUI needed).
 
 | Function | Description |
 |---|---|
-| `listen_key()` | Blocks until a key is pressed. Returns the key name. |
+| `listen_key()` | Listens for pressing a key. |
 | `on_key(key)` | Blocks until the given key is pressed, returns `true`. |
 
 ```nyxel
@@ -839,7 +831,7 @@ In Nyxel, you don’t have to jump through hoops for the basics. Just use a dot 
 
 # Arabic Keywords
 
-If you'd rather use Arabic because lets say you are learning Arabic and trying to improve or that you are Arab here are some keywords you need to know for Nyxel and you can use English and Arabic at the same time with no problems
+If you like Arabic more no problem Nyxel has got your back brother
 
 > Note: خطأ has a double meaning in Arabic—“false” and “error.” In Nyxel, خطأ always means “false” as a keyword. So if you need to name an error variable in a catch block, go with something like اصطد ع: instead of اصطد خطأ:.
 

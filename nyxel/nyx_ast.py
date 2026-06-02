@@ -103,18 +103,6 @@ class AddToStmt(Node):
         self.list_name  = list_name
 
 
-class LabelStmt(Node):
-    """N:  — a numeric label that goto can jump to."""
-    __slots__ = ("target",)
-    def __init__(self, target): self.target = target
-
-
-class GotoStmt(Node):
-    """goto N  — jump to label N."""
-    __slots__ = ("target",)
-    def __init__(self, target): self.target = target
-
-
 
 
 # ══════════════════════════════════════════════════════════════════════════════

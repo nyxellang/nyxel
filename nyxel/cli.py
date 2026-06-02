@@ -67,7 +67,8 @@ def _run_file(
 
     try:
         tokens = lex(source, path)
-        stmts  = Parser(tokens).parse()
+        parser = Parser(tokens)
+        stmts  = parser.parse()
     except NyxError as e:
         print(e)
         sys.exit(1)

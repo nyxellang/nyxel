@@ -17,7 +17,8 @@ from .cli         import main
 
 def run_source(source: str, filename: str = "<input>", script_args=None) -> None:
     tokens = lex(source, filename)
-    stmts  = Parser(tokens).parse()
+    parser = Parser(tokens)
+    stmts  = parser.parse()
     py_source = transpile(stmts, filename)
     g = __nyx_runtime(script_args or [])
     try:

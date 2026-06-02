@@ -16,7 +16,6 @@ from .nyx_ast import (
     ForStmt, WhileStmt,
     TryStmt, DefStmt, ReturnStmt, BreakStmt, ContinueStmt, PassStmt,
     ExprStmt, PyBlockStmt, BringStmt, BringFromStmt, StructStmt, AddToStmt,
-    LabelStmt, GotoStmt,
     NumExpr, StrExpr, BoolExpr, NoneExpr,
     ListExpr, DictExpr, VarExpr,
     BinOpExpr, UnaryExpr, CallExpr, IndexExpr, SliceExpr, AttrExpr, PyBlockExpr,
@@ -78,7 +77,7 @@ class Parser:
         "fn", "def", "return",
         "bring", "from", "as",
         "struct",
-        "where", "goto",
+        "where",
         "and", "or", "not",
         "true", "false", "none",
         "python",
@@ -145,11 +144,6 @@ class Parser:
             code = t.value; self._adv(); self._skip("NL")
             return PyBlockStmt(code)
 
-        # Label:  N :
-        if t.type == "NUM" and self._peek().type == "PUNCT" and self._peek().value == ":":
-            target = int(self._adv().value); self._adv(); self._skip("NL")
-            return LabelStmt(target)
-
         if t.type == "KW":
             v = t.value
             if v in ("when", "if"):   return self._when()
@@ -163,7 +157,6 @@ class Parser:
             if v == "struct":         return self._struct()
             if v == "let":            return self._let()
             if v == "return":         return self._return()
-            if v == "goto":           return self._goto()
             if v == "break":    self._adv(); self._skip("NL"); return BreakStmt()
             if v == "continue": self._adv(); self._skip("NL"); return ContinueStmt()
             if v == "pass":     self._adv(); self._skip("NL"); return PassStmt()
@@ -175,7 +168,7 @@ class Parser:
         t = self._t()
         if t.type != "NUM":
             raise NyxError("SyntaxError", f"goto expects a line number, got '{t.value}'",
-                           t.line, t.col, t.raw, hint="Write:  goto 100")
+                           t.line, t.col, t.raw, hint="Write:  goto 10")
         target = int(self._adv().value)
         self._skip("NL")
         return GotoStmt(target)
@@ -447,8 +440,6 @@ class Parser:
             return ReturnStmt(NoneExpr())
         expr = self._expr(); self._skip("NL")
         return ReturnStmt(expr)
-
-
 
 
     # ══════════════════════════════════════════════════════════════════════════
