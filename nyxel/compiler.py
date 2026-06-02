@@ -37,9 +37,10 @@ _NYXEL_METHOD_REWRITE = {
 
 
 class Compiler:
-    def __init__(self):
+    def __init__(self, globals_set: set = set()):
         self._indent = 0
         self._lines: list[str] = []
+        self._globals = globals_set
 
     def compile(self, stmts: list[Node]) -> str:
         self._lines = []
@@ -166,6 +167,10 @@ class Compiler:
             )
             self._line(f"def {node.name}({params}):")
             self._indent += 1
+            assigned = _assigned_names_in_func(node.body)
+            globals_needed = sorted(assigned & self._globals)
+            if globals_needed:
+                self._line(f"global {', '.join(globals_needed)}")
             for s in node.body:
                 self._stmt(s)
             self._indent -= 1
@@ -339,6 +344,21 @@ def _body_nodes(node: Node) -> list:
     return []
 
 
+def _assigned_names_in_func(nodes: list[Node]) -> set:
+    """Collect variable names assigned within a function body (not inside nested DefStmts)."""
+    names: set = set()
+    def walk(ns):
+        for stmt in ns:
+            t = type(stmt)
+            if t is DefStmt:
+                continue
+            if t is AssignStmt and stmt.target[0] == "var":
+                names.add(stmt.target[1])
+            walk(_body_nodes(stmt))
+    walk(nodes)
+    return names
+
+
 def _collect_globals(stmts: list[Node]) -> set:
     names: set = set()
     def walk(nodes):
@@ -376,10 +396,10 @@ def _has_top_return(stmts: list[Node]) -> bool:
 
 
 def transpile(stmts: list[Node], source_name: str = "<input>") -> str:
-    body = Compiler().compile(stmts)
+    gnames = _collect_globals(stmts)
+    body = Compiler(gnames).compile(stmts)
     if _has_top_return(stmts):
         indented = textwrap.indent(body, "    ")
-        gnames = _collect_globals(stmts)
         gdecl = f"    global {', '.join(sorted(gnames))}\n" if gnames else ""
         return (
             f"def __nyx_main__():\n"

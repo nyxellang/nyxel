@@ -1,0 +1,61 @@
+# ── GUI All Widgets Demo ──────────────────────────────────
+bring gui
+
+let win = gui.window("GUI All Widgets", 500, 550)
+
+# ── label ─────────────────────────────────────────────────
+let lbl = win.add(gui.label("Hello from Nyxel!"))
+win.add(gui.dim_label("A dimmed label for secondary text"))
+
+# ── btn ───────────────────────────────────────────────────
+let click_count = 0
+fn on_btn():
+    click_count = click_count + 1
+    lbl.text = "Clicked " + to_str(click_count) + " times"
+
+win.add(gui.btn("Click me").color("green").on_click(on_btn))
+
+# ── input ─────────────────────────────────────────────────
+win.add(gui.input("Type something here..."))
+
+# ── checkbox ──────────────────────────────────────────────
+win.add(gui.checkbox("Enable notifications"))
+
+# ── switch ────────────────────────────────────────────────
+win.add(gui.switch("Dark mode"))
+
+# ── dropdown ──────────────────────────────────────────────
+win.add(gui.dropdown("small", "medium", "large"))
+
+# ── slider ────────────────────────────────────────────────
+fn on_slider():
+    slider_lbl.text = "Slider: " + to_str(sld.value)
+
+let slider_lbl = win.add(gui.label("Slider: 50"))
+let sld = win.add(gui.slider(0, 100).on_change(on_slider))
+
+# ── radio ─────────────────────────────────────────────────
+win.add(gui.label("Choose one:"))
+win.add(gui.radio("Option A", "group1"))
+win.add(gui.radio("Option B", "group1"))
+win.add(gui.radio("Option C", "group1"))
+
+# ── progressbar ──────────────────────────────────────────
+win.add(gui.progressbar())
+
+# ── textbox ───────────────────────────────────────────────
+let tb = win.add(gui.textbox(120))
+tb.append("Welcome to Nyxel GUI!")
+tb.append("All widget types demonstrated above.")
+
+# ── separator ────────────────────────────────────────────
+win.add(gui.separator())
+
+# ── key binding ──────────────────────────────────────────
+fn on_quit():
+    win.quit()
+
+win.on_key("escape", on_quit)
+win.add(gui.dim_label("Press ESC to close"))
+
+win.run()
