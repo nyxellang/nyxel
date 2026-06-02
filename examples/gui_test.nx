@@ -1,5 +1,9 @@
 let count = 0
 
+bring gui
+
+let win = gui.window("Counter", 300, 200)
+
 fn on_add():
     count = count + 1
     display.text = "Count: " + to_str(count)
@@ -8,7 +12,7 @@ fn on_reset():
     count = 0
     display.text = "Count: 0"
 
-create window("Counter") size(300, 200):
-    display = label("Count: 0")       place(20, 20)
-    btn("Add")    on_click(on_add)    place(20, 60)
-    btn("Reset") color("red") on_click(on_reset) place(120, 60)
+display = win.add(gui.label("Count: 0"))
+win.add(gui.btn("Add").on_click(on_add))
+win.add(gui.btn("Reset").color("red").on_click(on_reset))
+win.run()
