@@ -41,9 +41,9 @@ Programming shouldn't take days of studying it needs to be simple and easy.
 ## Requirements
 
 
-Python 3.10 or higher, and CustomTKinter for the GUI
+Python 3.10 or higher, and CustomTKinter for the GUI, and readchar for the key listing
 
-(Optional for arabic:
+(for arabic:
 ```bash
 pip install arabic-reshaper python-bidi
 ```
@@ -117,7 +117,7 @@ Open `projects/perfect.nx` — it shows a big part of what the language can do.
 
 ## Issues
 
-The main one is that because its on Python it is quite slow but until now the speed doesn't matter that much because its still simple enough that the most demanding script won't take much time
+used to be a problem with speed because of tree-walk now its transpiled!! about 70x faster :P
 
 ## License
 
