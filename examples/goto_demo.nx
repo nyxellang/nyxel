@@ -1,0 +1,17 @@
+# ── GOTO Demo ─────────────────────────────────────────────
+
+# Simple loop with goto
+let x = 0
+10:
+x = x + 1
+say(x)
+when x < 5:
+    goto 10
+
+say("--- done ---")
+
+# Forward jump
+goto 30
+say("this won't print")
+30:
+say("this will print")

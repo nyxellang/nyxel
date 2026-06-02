@@ -6,6 +6,7 @@ from .nyx_ast import (
     ForStmt, WhileStmt,
     TryStmt, DefStmt, ReturnStmt, BreakStmt, ContinueStmt, PassStmt,
     ExprStmt, PyBlockStmt, BringStmt, BringFromStmt, StructStmt, AddToStmt,
+    LabelStmt, GotoStmt,
     NumExpr, StrExpr, BoolExpr, NoneExpr,
     ListExpr, DictExpr, VarExpr,
     BinOpExpr, UnaryExpr, CallExpr, IndexExpr, SliceExpr, AttrExpr, PyBlockExpr,
@@ -45,8 +46,46 @@ class Compiler:
     def compile(self, stmts: list[Node]) -> str:
         self._lines = []
         self._indent = 0
+        if _has_gotos(stmts):
+            return self._compile_with_gotos(stmts)
         for stmt in stmts:
             self._stmt(stmt)
+        return "\n".join(self._lines)
+
+    def _compile_with_gotos(self, stmts: list[Node]) -> str:
+        """Compile a list of statements that contain goto/label into a while loop."""
+        blocks = _split_at_labels(stmts)
+        labels = [lb for lb, _ in blocks if lb is not None]
+        self._line("_jump = None")
+        self._line("while True:")
+        self._indent += 1
+        for label, body in blocks:
+            if label is None:
+                # Code before first label — runs only on initial entry
+                self._line("if _jump is None:")
+                self._indent += 1
+                for s in body:
+                    self._stmt(s)
+                if labels:
+                    self._line(f"_jump = {labels[0]}; continue")
+                else:
+                    self._line("break")
+                self._indent -= 1
+            else:
+                guard = f"if _jump == {label}:"
+                self._line(guard)
+                self._indent += 1
+                self._line("_jump = None")
+                for s in body:
+                    self._stmt(s)
+                # Fall through to next label or end
+                idx = labels.index(label)
+                next_label = labels[idx + 1] if idx + 1 < len(labels) else None
+                if next_label is not None:
+                    self._line(f"_jump = {next_label}; continue")
+                self._indent -= 1
+        self._line("break")
+        self._indent -= 1
         return "\n".join(self._lines)
 
     def _line(self, code: str = ""):
@@ -225,6 +264,14 @@ class Compiler:
             self._line(f"{node.list_name}.append({self._expr(node.value_expr)})")
             return
 
+        if t is GotoStmt:
+            self._line(f"_jump = {node.target}; continue")
+            return
+
+        if t is LabelStmt:
+            # Handled by _compile_with_gotos; no-op in normal mode
+            return
+
         raise NyxError("InternalError", f"Unknown statement: {type(node).__name__}")
 
     def _expr(self, node: Node) -> str:
@@ -342,6 +389,43 @@ def _body_nodes(node: Node) -> list:
             result.extend(node.finally_body)
         return result
     return []
+
+
+def _has_gotos(stmts: list[Node]) -> bool:
+    """Check if any statement tree contains GotoStmt or LabelStmt."""
+    def walk(ns):
+        for s in ns:
+            if isinstance(s, (GotoStmt, LabelStmt)):
+                return True
+            if isinstance(s, DefStmt):
+                continue
+            if walk(_body_nodes(s)):
+                return True
+        return False
+    return walk(stmts)
+
+
+def _split_at_labels(stmts: list[Node]) -> list:
+    """Split stmts into blocks at LabelStmt boundaries.
+    
+    Returns list of (label_or_None, [statements]).
+    """
+    blocks = []
+    current_label = None
+    current_block = []
+    for stmt in stmts:
+        if isinstance(stmt, LabelStmt):
+            if current_block:
+                blocks.append((current_label, current_block))
+            current_label = stmt.target
+            current_block = []
+        elif isinstance(stmt, GotoStmt):
+            current_block.append(stmt)
+        else:
+            current_block.append(stmt)
+    if current_block:
+        blocks.append((current_label, current_block))
+    return blocks
 
 
 def _assigned_names_in_func(nodes: list[Node]) -> set:

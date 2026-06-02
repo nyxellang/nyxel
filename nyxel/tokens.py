@@ -56,6 +56,7 @@ ARABIC_TO_ENGLISH: dict = {
     "و":         "and",
     "أو":        "or",
     "ليس":       "not",
+    "اذهب":      "goto",
 }
 
 
@@ -72,6 +73,7 @@ KEYWORDS: frozenset = frozenset({
     "struct",
     "add", "each",
     "where",
+    "goto",
     "and", "or", "not",
     "true", "false", "none",
     "python",
