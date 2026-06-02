@@ -12,11 +12,10 @@ from .nyx_ast import (
     ForStmt, WhileStmt,
     TryStmt, DefStmt, ReturnStmt, BreakStmt, ContinueStmt, PassStmt,
     ExprStmt, PyBlockStmt, BringStmt, BringFromStmt, StructStmt, AddToStmt,
-    WindowStmt,
     NumExpr, StrExpr, BoolExpr, NoneExpr,
     ListExpr, DictExpr, VarExpr,
     BinOpExpr, UnaryExpr, CallExpr, IndexExpr, AttrExpr, PyBlockExpr,
-    WhereExpr, WidgetExpr,
+    WhereExpr,
 )
 from .errors import (NyxError, _Return, _Break, _Continue,
                      suggest_attr, name_error_hint,
@@ -54,6 +53,11 @@ class ModuleLoader:
         self._loading: Set[str]               = set()
 
     def load(self, name: str, interpreter: "Interpreter") -> "NyxObject":
+        # built-in virtual modules — no .nx file needed
+        if name == "gui":
+            from .gui import make_gui_module
+            return make_gui_module(interpreter)
+
         path = self._find(name)
         if path is None:
             raise NyxError("ImportError", f"Module '{name}' not found",
@@ -114,7 +118,6 @@ class Interpreter:
     def __init__(self, script_args: List[str] = None, _loader: ModuleLoader = None):
         self.globals      = Environment()
         self._loader      = _loader or ModuleLoader()
-        self._gui_window  = None   # set while inside a create window block
         setup_builtins(self.globals, script_args or [], interpreter=self)
 
     def run(self, stmts: List[Node], env: Optional[Environment] = None) -> None:
@@ -290,29 +293,11 @@ class Interpreter:
                 env.define(alias, val)
             return
 
-        if t is WindowStmt:
-            self._exec_window(node, env); return
 
         raise NyxError("InternalError", f"Unknown statement node: {type(node).__name__}")
 
-    def _exec_window(self, node: WindowStmt, env: Environment) -> None:
-        from .gui import NyxWindow
-        title  = self._eval(node.title,  env)
-        width  = int(self._eval(node.width,  env))
-        height = int(self._eval(node.height, env))
-        window = NyxWindow(title, width, height)
-        prev   = self._gui_window
-        self._gui_window = window
-        try:
-            # Run in the SAME env so widget variables (counter_label, etc.)
-            # land in the same scope that the callbacks were closed over.
-            self.run(node.body, env)
-        finally:
-            self._gui_window = prev
-        try:
-            window.run()
-        except KeyboardInterrupt:
-            pass
+
+
 
     def _exec_try(self, node, env: Environment) -> None:
         caught_signal = None
@@ -507,8 +492,6 @@ class Interpreter:
         if t is PyBlockExpr:
             return self._pyblock(node.code, env, capture=True)
 
-        if t is WidgetExpr:
-            return self._eval_widget(node, env)
 
         raise NyxError("InternalError", f"Unknown expression node: {type(node).__name__}")
 
@@ -545,18 +528,6 @@ class Interpreter:
                 result.append(item)
         return result
 
-    def _eval_widget(self, node: WidgetExpr, env: Environment) -> Any:
-        if self._gui_window is None:
-            raise NyxError("GUIError",
-                           f"'{node.kind}' must be used inside a create window block",
-                           hint="Wrap your widgets in:  create window(\"Title\") size(800, 600):")
-        from .gui import NyxWidgetBuilder
-        args    = [self._eval(a, env) for a in node.args]
-        builder = NyxWidgetBuilder(self._gui_window, node.kind, args, self)
-        for mod_name, mod_args in node.modifiers:
-            evaled = [self._eval(a, env) for a in mod_args]
-            builder.apply_modifier(mod_name, evaled)
-        return builder.build()
 
     # ── function call ─────────────────────────────────────────────────────────
     # NyxFunction is the hot path — check it first.

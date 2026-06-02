@@ -56,7 +56,6 @@ ARABIC_TO_ENGLISH: dict = {
     "و":         "and",
     "أو":        "or",
     "ليس":       "not",
-    "أنشئ":      "create",
 }
 
 
@@ -76,6 +75,5 @@ KEYWORDS: frozenset = frozenset({
     "and", "or", "not",
     "true", "false", "none",
     "python",
-    "create",
     *ARABIC_TO_ENGLISH.keys(),
 })

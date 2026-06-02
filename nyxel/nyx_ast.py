@@ -102,17 +102,7 @@ class AddToStmt(Node):
         self.value_expr = value_expr
         self.list_name  = list_name
 
-class WindowStmt(Node):
-    """
-    create window("title") size(width, height):
-        body
-    """
-    __slots__ = ("title", "width", "height", "body")
-    def __init__(self, title, width, height, body):
-        self.title  = title
-        self.width  = width
-        self.height = height
-        self.body   = body
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -166,6 +156,11 @@ class IndexExpr(Node):
     def __init__(self, obj, idx):
         self.obj = obj; self.idx = idx
 
+class SliceExpr(Node):
+    __slots__ = ("obj", "start", "end")
+    def __init__(self, obj, start, end):
+        self.obj = obj; self.start = start; self.end = end
+
 class AttrExpr(Node):
     __slots__ = ("obj", "attr")
     def __init__(self, obj, attr):
@@ -186,19 +181,3 @@ class WhereExpr(Node):
     def __init__(self, collection, condition):
         self.collection = collection
         self.condition  = condition
-
-class WidgetExpr(Node):
-    """
-    btn("text") on_click(fn) place(x, y)
-
-    Produced by the parser when a call expression is followed by
-    one or more known widget modifiers (on_click, place).
-    Must appear inside a create window block.
-
-    modifiers — list of (modifier_name: str, args: [Node])
-    """
-    __slots__ = ("kind", "args", "modifiers")
-    def __init__(self, kind: str, args: list, modifiers: list):
-        self.kind      = kind
-        self.args      = args
-        self.modifiers = modifiers

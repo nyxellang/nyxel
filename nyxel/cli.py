@@ -22,7 +22,6 @@ from .version import VERSION
 from .errors import NyxError
 from .lexer import lex
 from .parser import Parser
-from .interpreter import Interpreter
 from .repl import run_repl
 
 
@@ -77,16 +76,39 @@ def _run_file(
         print(f"  ✓  {path}  —  syntax OK")
         return
 
+    from .compiler import transpile
+    from ._run import __nyx_runtime
+    from .errors import name_error_hint
+
+    py_source = transpile(stmts, path)
+    g = __nyx_runtime(script_args or [])
     try:
-        Interpreter(script_args).run(stmts)
-    except NyxError as e:
-        print(e)
-        sys.exit(1)
-    except SystemExit:
+        exec(compile(py_source, path, "exec"), g)
+    except NyxError:
         raise
-    except Exception as e:
-        print(f"  ✗  Unexpected runtime error: {e}")
-        sys.exit(1)
+    except ZeroDivisionError:
+        raise NyxError("MathError", "Division by zero",
+                       hint="Make sure the divisor is not zero")
+    except NameError as __e:
+        hint = name_error_hint(getattr(__e, "name", str(__e)), list(g.keys()))
+        raise NyxError("NameError", f"'{__e.name}' doesn't exist yet", hint=hint)
+    except TypeError as __e:
+        msg = str(__e)
+        hint = ""
+        if "unsupported operand type" in msg or "can only concatenate str" in msg:
+            hint = "Convert the number first:  str(the_number) + the_text"
+        raise NyxError("TypeError", msg, hint=hint)
+    except IndexError as __e:
+        raise NyxError("IndexError", str(__e),
+                       hint="Check that the index is within the list's length")
+    except SyntaxError as __e:
+        msg = str(__e)
+        hint = ""
+        if "import" in msg.lower():
+            hint = "In Nyxel, use 'bring' instead of 'import'"
+        raise NyxError("SyntaxError", msg, hint=hint)
+    except Exception as __e:
+        raise NyxError("RuntimeError", str(__e))
 
 
 # ── entry point ───────────────────────────────────────────────────────────────
@@ -113,19 +135,41 @@ def main(argv: List[str] = None) -> None:
         if len(argv) < 2:
             print("  ✗  Usage: nyx run <file.nx>")
             sys.exit(1)
-        _run_file(argv[1], script_args=argv[2:])
+        try:
+            _run_file(argv[1], script_args=argv[2:])
+        except NyxError as e:
+            print(e)
+            sys.exit(1)
+        except SystemExit:
+            raise
+        except Exception as e:
+            print(f"  ✗  Unexpected runtime error: {e}")
+            sys.exit(1)
         return
 
     if cmd == "check":
         if len(argv) < 2:
             print("  ✗  Usage: nyx check <file.nx>")
             sys.exit(1)
-        _run_file(argv[1], check_only=True)
+        try:
+            _run_file(argv[1], check_only=True)
+        except NyxError as e:
+            print(e)
+            sys.exit(1)
         return
 
     # Bare filename shortcut:  nyx script.nx
     if Path(cmd).exists():
-        _run_file(cmd, script_args=argv[1:])
+        try:
+            _run_file(cmd, script_args=argv[1:])
+        except NyxError as e:
+            print(e)
+            sys.exit(1)
+        except SystemExit:
+            raise
+        except Exception as e:
+            print(f"  ✗  Unexpected runtime error: {e}")
+            sys.exit(1)
         return
 
     print(f"  ✗  Unknown command: '{cmd}'")

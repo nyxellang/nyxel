@@ -16,15 +16,15 @@ from .nyx_ast import (
     ForStmt, WhileStmt,
     TryStmt, DefStmt, ReturnStmt, BreakStmt, ContinueStmt, PassStmt,
     ExprStmt, PyBlockStmt, BringStmt, BringFromStmt, StructStmt, AddToStmt,
-    WindowStmt,
     NumExpr, StrExpr, BoolExpr, NoneExpr,
     ListExpr, DictExpr, VarExpr,
-    BinOpExpr, UnaryExpr, CallExpr, IndexExpr, AttrExpr, PyBlockExpr,
-    WhereExpr, WidgetExpr,
+    BinOpExpr, UnaryExpr, CallExpr, IndexExpr, SliceExpr, AttrExpr, PyBlockExpr,
+    WhereExpr,
 )
 
-# Modifiers that can follow a widget call: btn("x") on_click(fn) place(10, 20)
-_WIDGET_MODS = frozenset({"on_click", "place", "color", "on_change", "on_input"})
+_CMP_OPS = {"==", "!=", "<", ">", "<=", ">="}
+_ADD_OPS = ("+", "-")
+_MUL_OPS = ("*", "/", "//", "%", "**")
 
 
 class Parser:
@@ -32,13 +32,14 @@ class Parser:
     def __init__(self, tokens: List[Token]):
         self._toks = tokens
         self._pos  = 0
+        self._n    = len(tokens)
 
     def _t(self) -> Token:
-        return self._toks[self._pos] if self._pos < len(self._toks) else self._toks[-1]
+        return self._toks[self._pos] if self._pos < self._n else self._toks[-1]
 
     def _peek(self, n: int = 1) -> Token:
         i = self._pos + n
-        return self._toks[i] if i < len(self._toks) else self._toks[-1]
+        return self._toks[i] if i < self._n else self._toks[-1]
 
     def _adv(self) -> Token:
         t = self._t()
@@ -51,13 +52,16 @@ class Parser:
             self._adv()
 
     def _is_kw(self, *words: str) -> bool:
-        return self._t().type == "KW" and self._t().value in words
+        t = self._t()
+        return t.type == "KW" and t.value in words
 
     def _is_op(self, *ops: str) -> bool:
-        return self._t().type == "OP" and self._t().value in ops
+        t = self._t()
+        return t.type == "OP" and t.value in ops
 
     def _is_p(self, *chars: str) -> bool:
-        return self._t().type == "PUNCT" and self._t().value in chars
+        t = self._t()
+        return t.type == "PUNCT" and t.value in chars
 
     def _need_kw(self, word: str) -> Token:
         if not self._is_kw(word):
@@ -78,7 +82,6 @@ class Parser:
         "true", "false", "none",
         "python",
         "break", "continue", "pass",
-        "create",
     })
 
     def _need_id(self) -> str:
@@ -154,7 +157,6 @@ class Parser:
             if v == "struct":         return self._struct()
             if v == "let":            return self._let()
             if v == "return":         return self._return()
-            if v == "create":         return self._create_window()
             if v == "break":    self._adv(); self._skip("NL"); return BreakStmt()
             if v == "continue": self._adv(); self._skip("NL"); return ContinueStmt()
             if v == "pass":     self._adv(); self._skip("NL"); return PassStmt()
@@ -429,39 +431,8 @@ class Parser:
         expr = self._expr(); self._skip("NL")
         return ReturnStmt(expr)
 
-    def _create_window(self) -> WindowStmt:
-        """
-        create window("title") size(width, height):
-            body
 
-        size(...) is optional; defaults to 800x600.
-        """
-        self._adv()  # consume 'create'
 
-        t = self._t()
-        if not (t.type == "ID" and t.value == "window"):
-            raise NyxError("SyntaxError",
-                           f"Expected 'window' after 'create', got '{t.value}'",
-                           t.line, t.col, t.raw,
-                           hint="Write:  create window(\"My App\") size(800, 600):")
-        self._adv()  # consume 'window'
-        self._need_p("(")
-        title = self._expr()
-        self._need_p(")")
-
-        width  = NumExpr(800)
-        height = NumExpr(600)
-        if self._t().type == "ID" and self._t().value == "size":
-            self._adv()  # consume 'size'
-            self._need_p("(")
-            width  = self._expr()
-            self._need_p(",")
-            height = self._expr()
-            self._need_p(")")
-
-        self._need_p(":")
-        body = self._block()
-        return WindowStmt(title, width, height, body)
 
     # ══════════════════════════════════════════════════════════════════════════
     #  EXPRESSION HIERARCHY  (precedence low → high)
@@ -500,9 +471,8 @@ class Parser:
 
     def _cmp(self) -> Node:
         left = self._add()
-        CMP  = {"==", "!=", "<", ">", "<=", ">="}
         while True:
-            if self._t().type == "OP" and self._t().value in CMP:
+            if self._t().type == "OP" and self._t().value in _CMP_OPS:
                 op = self._adv().value
                 left = BinOpExpr(left, op, self._add())
             elif self._is_kw("in"):
@@ -518,14 +488,14 @@ class Parser:
 
     def _add(self) -> Node:
         left = self._mul()
-        while self._t().type == "OP" and self._t().value in ("+", "-"):
+        while self._t().type == "OP" and self._t().value in _ADD_OPS:
             op = self._adv().value
             left = BinOpExpr(left, op, self._mul())
         return left
 
     def _mul(self) -> Node:
         left = self._unary()
-        while self._t().type == "OP" and self._t().value in ("*", "/", "//", "%", "**"):
+        while self._t().type == "OP" and self._t().value in _MUL_OPS:
             op = self._adv().value
             left = BinOpExpr(left, op, self._unary())
         return left
@@ -542,8 +512,21 @@ class Parser:
         while True:
             if self._is_p("["):
                 self._adv()
-                idx = self._expr(); self._need_p("]")
-                node = IndexExpr(node, idx)
+                if self._is_p(":"):
+                    self._adv()
+                    end = None if self._is_p("]") else self._expr()
+                    self._need_p("]")
+                    node = SliceExpr(node, None, end)
+                else:
+                    start = self._expr()
+                    if self._is_p(":"):
+                        self._adv()
+                        end = None if self._is_p("]") else self._expr()
+                        self._need_p("]")
+                        node = SliceExpr(node, start, end)
+                    else:
+                        self._need_p("]")
+                        node = IndexExpr(node, start)
 
             elif self._is_p("."):
                 self._adv()
@@ -561,24 +544,7 @@ class Parser:
                 node = CallExpr(node, args)
 
             else:
-                # Widget modifier chain: btn("x") on_click(fn) place(10, 20)
-                # Recognised only when following a CallExpr whose func is a bare name.
-                if (isinstance(node, CallExpr) and
-                        isinstance(node.func, VarExpr) and
-                        self._t().type == "ID" and
-                        self._t().value in _WIDGET_MODS and
-                        self._peek().type == "PUNCT" and self._peek().value == "("):
-                    mods = []
-                    while (self._t().type == "ID" and
-                           self._t().value in _WIDGET_MODS and
-                           self._peek().type == "PUNCT" and self._peek().value == "("):
-                        mod_name = self._adv().value
-                        self._adv()  # (
-                        mod_args = self._call_args()
-                        mods.append((mod_name, mod_args))
-                    node = WidgetExpr(node.func.name, node.args, mods)
-                else:
-                    break
+                break
 
         return node
 

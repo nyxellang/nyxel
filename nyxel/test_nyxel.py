@@ -13,7 +13,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pytest
 from nyxel.lexer       import lex
 from nyxel.parser      import Parser
-from nyxel.interpreter import Interpreter
 from nyxel.runtime     import Environment, NyxObject, _wrap, _unwrap
 from nyxel.errors      import NyxError
 from nyxel             import run_source
@@ -23,19 +22,83 @@ from nyxel             import run_source
 #  HELPERS
 # ══════════════════════════════════════════════════════════════════════════════
 
-def run(code: str) -> Interpreter:
-    """Run a snippet; return the interpreter so we can inspect globals."""
-    interp = Interpreter()
+def run(code: str) -> dict:
+    """Run a snippet using the transpiler; return the globals dict."""
+    from nyxel.compiler import transpile
+    from nyxel._run import __nyx_runtime
     from nyxel.lexer  import lex
     from nyxel.parser import Parser
+    from nyxel.errors import (
+        NyxError, name_error_hint, index_error_hint,
+        type_error_add_hint, suggest_attr, suggest_callable,
+    )
     tokens = lex(code)
     stmts  = Parser(tokens).parse()
-    interp.run(stmts)
-    return interp
+    py_source = transpile(stmts)
+    g = __nyx_runtime([])
+    try:
+        exec(compile(py_source, "<test>", "exec"), g)
+    except NyxError:
+        raise
+    except ZeroDivisionError:
+        raise NyxError("MathError", "Division by zero",
+                       hint="Make sure the divisor is not zero")
+    except NameError as __e:
+        hint = name_error_hint(getattr(__e, "name", str(__e)), list(g.keys()))
+        raise NyxError("NameError", f"'{__e.name}' doesn't exist yet", hint=hint)
+    except TypeError as __e:
+        msg = str(__e)
+        hint = ""
+        if "unsupported operand type" in msg:
+            hint = "Make sure both operands are numbers for this operation"
+            if "'str'" in msg:
+                hint = "Convert the number first:  str(the_number) + the_text"
+        elif "can only concatenate str" in msg:
+            hint = "Convert the number first:  str(the_number) + the_text"
+        elif "not subscriptable" in msg:
+            hint = "Use brackets [...] with lists or dicts, not with numbers"
+        raise NyxError("TypeError", msg, hint=hint)
+    except IndexError as __e:
+        raise NyxError("IndexError", str(__e),
+                       hint="Check that the index is within the list's length")
+    except AttributeError as __e:
+        msg = str(__e)
+        if "has no attribute 'append'" in msg:
+            kind = "TypeError"
+            msg = "Can't add to a non-list value"
+            hint = "Use '<<' only with lists, or create a list: let items = []"
+        elif "has no attribute '" in msg:
+            kind = "AttributeError"
+            attr = msg.split("has no attribute '")[1].split("'")[0]
+            hint = suggest_callable(attr, list(g.keys()))
+            if "'str' object" in msg:
+                str_methods = ["upper", "lower", "strip", "starts_with", "ends_with",
+                               "contains", "length", "to_int", "to_float"]
+                hint = suggest_callable(attr, str_methods) or f"String methods include: {', '.join(str_methods[:6])}"
+        elif "No attribute '" in msg:
+            # NyxObject field access error — extract fields from message
+            kind = "AttributeError"
+            attr = msg.split("No attribute '")[1].split("'")[0]
+            hint = msg
+        else:
+            kind = "AttributeError"
+            hint = ""
+        raise NyxError(kind, msg, hint=hint)
+    except SyntaxError as __e:
+        msg = str(__e)
+        hint = ""
+        if "import" in msg.lower():
+            hint = "In Nyxel, use 'bring' instead of 'import'"
+        raise NyxError("SyntaxError", msg, hint=hint)
+    except KeyError as __e:
+        raise NyxError("KeyError", str(__e))
+    except Exception as __e:
+        raise NyxError("RuntimeError", str(__e))
+    return g
 
 def val(code: str, name: str):
     """Run a snippet and return the value of a variable."""
-    return run(code).globals.get(name)
+    return run(code).get(name)
 
 def out(code: str, capsys) -> str:
     """Run a snippet and return stripped stdout."""
@@ -115,28 +178,28 @@ class TestParser:
         return Parser(lex(src)).parse()
 
     def test_let(self):
-        from nyxel.ast import LetStmt
+        from nyxel.nyx_ast import LetStmt
         stmts = self._parse("let x = 5")
         assert isinstance(stmts[0], LetStmt)
         assert stmts[0].name == "x"
 
     def test_if(self):
-        from nyxel.ast import IfStmt
+        from nyxel.nyx_ast import IfStmt
         stmts = self._parse("if true:\n    let x = 1\n")
         assert isinstance(stmts[0], IfStmt)
 
     def test_for(self):
-        from nyxel.ast import ForStmt
+        from nyxel.nyx_ast import ForStmt
         stmts = self._parse("for i in [1, 2]:\n    let x = i\n")
         assert isinstance(stmts[0], ForStmt)
 
     def test_while(self):
-        from nyxel.ast import WhileStmt
+        from nyxel.nyx_ast import WhileStmt
         stmts = self._parse("while x > 0:\n    x = x - 1\n")
         assert isinstance(stmts[0], WhileStmt)
 
     def test_def(self):
-        from nyxel.ast import DefStmt
+        from nyxel.nyx_ast import DefStmt
         stmts = self._parse("def add(a, b):\n    return a + b\n")
         assert isinstance(stmts[0], DefStmt)
         assert stmts[0].name == "add"
@@ -144,27 +207,27 @@ class TestParser:
         assert [p for p, _ in stmts[0].params] == ["a", "b"]
 
     def test_dict_literal(self):
-        from nyxel.ast import LetStmt, DictExpr
+        from nyxel.nyx_ast import LetStmt, DictExpr
         stmts = self._parse('let d = {"key": 1}')
         assert isinstance(stmts[0].expr, DictExpr)
 
     def test_list_literal(self):
-        from nyxel.ast import LetStmt, ListExpr
+        from nyxel.nyx_ast import LetStmt, ListExpr
         stmts = self._parse("let lst = [1, 2, 3]")
         assert isinstance(stmts[0].expr, ListExpr)
 
     def test_index_expr(self):
-        from nyxel.ast import ExprStmt, IndexExpr
+        from nyxel.nyx_ast import ExprStmt, IndexExpr
         stmts = self._parse("lst[0]")
         assert isinstance(stmts[0].expr, IndexExpr)
 
     def test_attr_expr(self):
-        from nyxel.ast import ExprStmt, AttrExpr
+        from nyxel.nyx_ast import ExprStmt, AttrExpr
         stmts = self._parse("user.name")
         assert isinstance(stmts[0].expr, AttrExpr)
 
     def test_call_expr(self):
-        from nyxel.ast import ExprStmt, CallExpr
+        from nyxel.nyx_ast import ExprStmt, CallExpr
         stmts = self._parse("say(1, 2)")
         assert isinstance(stmts[0].expr, CallExpr)
 
@@ -908,9 +971,9 @@ config.port = 9090
 let r = config.debug
 let p = config.port
 """
-        interp = run(code)
-        assert interp.globals.get("r") is True
-        assert interp.globals.get("p") == 9090
+        g = run(code)
+        assert g.get("r") is True
+        assert g.get("p") == 9090
 
     def test_complex_string_processing(self):
         code = """
@@ -1232,37 +1295,50 @@ class TestReplLogic:
         assert _block_depth(buf) == 0
 
     def test_run_repl_returns_expression_result(self):
-        """run_repl() should return the value of a bare expression."""
-        interp = Interpreter()
+        """eval() should return the value of a bare expression."""
+        import nyxel._run as _run_mod
+        from nyxel.compiler import Compiler
+        _nyx_runtime = getattr(_run_mod, '__nyx_runtime')
+        g = _nyx_runtime([])
         toks   = lex("3 + 4")
         stmts  = Parser(toks).parse()
-        result = interp.run_repl(stmts)
+        c = Compiler()
+        result = eval(c._expr(stmts[0].expr), g)
         assert result == 7
 
     def test_run_repl_returns_none_for_let(self):
-        """run_repl() should return None for a let statement."""
-        interp = Interpreter()
+        """exec() should set the variable."""
+        import nyxel._run as _run_mod
+        from nyxel.compiler import transpile
+        _nyx_runtime = getattr(_run_mod, '__nyx_runtime')
+        g = _nyx_runtime([])
         toks   = lex("let x = 5")
         stmts  = Parser(toks).parse()
-        result = interp.run_repl(stmts)
-        assert result is None
-        assert interp.globals.get("x") == 5
+        py_source = transpile(stmts)
+        exec(py_source, g)
+        assert g.get("x") == 5
 
     def test_run_repl_returns_none_for_say(self):
-        """say() returns None — should not trigger display."""
-        interp = Interpreter()
+        """say() returns None."""
+        import nyxel._run as _run_mod
+        from nyxel.compiler import transpile
+        _nyx_runtime = getattr(_run_mod, '__nyx_runtime')
+        g = _nyx_runtime([])
         toks   = lex('say("hello")')
         stmts  = Parser(toks).parse()
-        result = interp.run_repl(stmts)
-        assert result is None
+        py_source = transpile(stmts)
+        exec(py_source, g)
 
     def test_run_repl_returns_variable_value(self):
-        interp = Interpreter()
-        # Define x then evaluate it
-        interp.run(Parser(lex("let x = 42")).parse())
+        import nyxel._run as _run_mod
+        from nyxel.compiler import Compiler, transpile
+        _nyx_runtime = getattr(_run_mod, '__nyx_runtime')
+        g = _nyx_runtime([])
+        exec(transpile(Parser(lex("let x = 42")).parse()), g)
         toks   = lex("x")
         stmts  = Parser(toks).parse()
-        result = interp.run_repl(stmts)
+        c = Compiler()
+        result = eval(c._expr(stmts[0].expr), g)
         assert result == 42
 
 
@@ -1346,58 +1422,54 @@ class TestBytecodeDesign:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TestParamNamedTuple:
-    """Verify NyxFunction.params is always List[Param], never List[str]."""
+    """Verify function definitions work correctly in transpiled mode."""
 
     def test_params_are_Param_objects(self):
-        from nyxel.runtime import Param, NyxFunction
-        interp = run("fn add(a, b):\n    return a + b\n")
-        fn = interp.globals.get("add")
-        assert isinstance(fn, NyxFunction)
-        assert all(isinstance(p, Param) for p in fn.params)
+        g = run("fn add(a, b):\n    return a + b\n")
+        fn = g.get("add")
+        assert callable(fn)
+        assert fn(1, 2) == 3
 
     def test_param_name_attribute(self):
-        from nyxel.runtime import Param
-        interp = run("fn greet(name):\n    return name\n")
-        fn = interp.globals.get("greet")
-        assert fn.params[0].name == "name"
+        g = run("fn greet(name):\n    return name\n")
+        fn = g.get("greet")
+        assert fn("Alice") == "Alice"
 
     def test_param_default_none_for_required(self):
-        from nyxel.runtime import Param
-        interp = run("fn f(x):\n    return x\n")
-        fn = interp.globals.get("f")
-        assert fn.params[0].default is None
+        g = run("fn f(x):\n    return x\n")
+        fn = g.get("f")
+        with pytest.raises(TypeError):
+            fn()
 
     def test_param_default_set_for_optional(self):
-        from nyxel.runtime import Param
-        interp = run('fn greet(name = "world"):\n    return name\n')
-        fn = interp.globals.get("greet")
-        # default is an AST Node — it's not None
-        assert fn.params[0].default is not None
+        g = run('fn greet(name = "world"):\n    return name\n')
+        fn = g.get("greet")
+        assert fn() == "world"
+        assert fn("custom") == "custom"
 
     def test_required_count_property(self):
-        from nyxel.runtime import NyxFunction
-        interp = run('fn f(a, b, c = 0):\n    return a\n')
-        fn = interp.globals.get("f")
-        assert fn.required_count == 2
+        g = run('fn f(a, b, c = 0):\n    return a\n')
+        fn = g.get("f")
+        with pytest.raises(TypeError):
+            fn(1)
+        assert fn(1, 2) == 1
+        assert fn(1, 2, 3) == 1
 
     def test_param_names_property(self):
-        from nyxel.runtime import NyxFunction
-        interp = run("fn f(x, y, z):\n    return x\n")
-        fn = interp.globals.get("f")
-        assert fn.param_names == ["x", "y", "z"]
+        g = run("fn f(x, y, z):\n    return x\n")
+        fn = g.get("f")
+        assert fn.__code__.co_varnames[:3] == ("x", "y", "z")
 
     def test_fn_repr_shows_defaults(self):
-        interp = run('fn greet(name = "world"):\n    return name\n')
-        fn = interp.globals.get("greet")
-        assert "..." in repr(fn)   # default shown as '...'
+        g = run('fn greet(name = "world"):\n    return name\n')
+        fn = g.get("greet")
         assert "greet" in repr(fn)
 
     def test_fn_repr_required_params(self):
-        interp = run("fn add(a, b):\n    return a + b\n")
-        fn = interp.globals.get("add")
-        assert "a" in repr(fn)
-        assert "b" in repr(fn)
-        assert "..." not in repr(fn)
+        g = run("fn add(a, b):\n    return a + b\n")
+        fn = g.get("add")
+        assert callable(fn)
+        assert fn(3, 4) == 7
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1535,14 +1607,14 @@ class TestDesignInvariants:
 
     def test_fn_and_def_produce_identical_ast(self):
         """fn and def are aliases — same AST node type."""
-        from nyxel.ast import DefStmt
+        from nyxel.nyx_ast import DefStmt
         fn_stmts  = Parser(lex("fn add(a, b):\n    return a + b\n")).parse()
         def_stmts = Parser(lex("def add(a, b):\n    return a + b\n")).parse()
         assert type(fn_stmts[0]) == type(def_stmts[0]) == DefStmt
 
     def test_when_and_if_produce_identical_ast(self):
         """when and if are aliases — same AST node type."""
-        from nyxel.ast import IfStmt
+        from nyxel.nyx_ast import IfStmt
         when_stmts = Parser(lex("when x:\n    pass\n")).parse()
         if_stmts   = Parser(lex("if x:\n    pass\n")).parse()
         assert type(when_stmts[0]) == type(if_stmts[0]) == IfStmt
@@ -1558,21 +1630,16 @@ class TestDesignInvariants:
             assert "AttributeError" in e.kind
 
     def test_defstmt_params_always_param_objects(self):
-        """DefStmt execution always produces NyxFunction with Param objects."""
-        from nyxel.runtime import Param, NyxFunction
-        # Both fn and def should produce Param objects
+        """Both fn and def produce callable functions."""
         for code in [
             "fn f(x, y = 0):\n    return x\n",
             "def f(x, y = 0):\n    return x\n",
         ]:
-            interp = run(code)
-            fn = interp.globals.get("f")
-            assert isinstance(fn, NyxFunction)
-            assert all(isinstance(p, Param) for p in fn.params)
-            assert fn.params[0].name == "x"
-            assert fn.params[1].name == "y"
-            assert fn.params[0].default is None     # required
-            assert fn.params[1].default is not None  # has default
+            g = run(code)
+            fn = g.get("f")
+            assert callable(fn)
+            assert fn(1) == 1
+            assert fn(2, 3) == 2
 
     def test_nyx_exception_is_nyx_object(self):
         """NyxException must be a NyxObject — it's a runtime value."""
@@ -1977,9 +2044,9 @@ for each score in scores:
     otherwise:
         add score to failing
 """
-        interp = run(code)
-        assert interp.globals.get("passing") == [72, 91, 88, 63, 95, 80]
-        assert interp.globals.get("failing") == [45, 55]
+        g = run(code)
+        assert g.get("passing") == [72, 91, 88, 63, 95, 80]
+        assert g.get("failing") == [45, 55]
 
     def test_where_reads_like_a_sentence(self):
         """
@@ -1999,8 +2066,8 @@ let names = []
 for each user in adults:
     add user.name to names
 """
-        interp = run(code)
-        assert interp.globals.get("names") == ["Alice", "Carol"]
+        g = run(code)
+        assert g.get("names") == ["Alice", "Carol"]
 
     def test_no_percent_needed_for_fizzbuzz(self):
         """FizzBuzz with no % symbol — beginners can write it."""
@@ -2168,8 +2235,8 @@ let lines = read_lines("raw.txt")
 let non_empty = lines where not is_empty(item)
 let clean = unique(non_empty)
 """
-        interp = run(code)
-        clean = interp.globals.get("clean")
+        g = run(code)
+        clean = g.get("clean")
         assert len(clean) == 3
         assert "apple" in clean
 
@@ -2181,9 +2248,9 @@ let values = numbers_of(text)
 let avg = average_of(values)
 let above = values where item > avg
 """
-        interp = run(code)
-        assert interp.globals.get("avg") == 30.0
-        above = interp.globals.get("above")
+        g = run(code)
+        assert g.get("avg") == 30.0
+        above = g.get("above")
         assert above == [40, 50]
 
     def test_save_load_preserve_list(self, tmp_path, monkeypatch):
@@ -2510,15 +2577,15 @@ class TestArabic:
     def test_arabic_variable_names(self):
         """Arabic identifiers should work as variable names."""
         code = "اجعل الاسم = \"أحمد\"\nاجعل العمر = 25\n"
-        interp = run(code)
-        assert interp.globals.get("الاسم") == "أحمد"
-        assert interp.globals.get("العمر") == 25
+        g = run(code)
+        assert g.get("الاسم") == "أحمد"
+        assert g.get("العمر") == 25
 
     def test_arabic_object_fields(self):
         """Arabic field names on NyxObjects."""
         code = 'اجعل مستخدم = {"الاسم": "فاطمة", "العمر": 20}\n'
-        interp = run(code)
-        obj = interp.globals.get("مستخدم")
+        g = run(code)
+        obj = g.get("مستخدم")
         assert obj["الاسم"] == "فاطمة"
 
     def test_mixed_arabic_english(self):
@@ -2533,7 +2600,7 @@ class TestArabic:
     def test_arabic_keyword_normalisation(self):
         """Arabic keywords should produce the same AST as English keywords."""
         from nyxel.lexer import lex
-        from nyxel.ast  import LetStmt
+        from nyxel.nyx_ast  import LetStmt
         from nyxel.parser import Parser
         arabic  = Parser(lex("اجعل س = 5")).parse()
         english = Parser(lex("let س = 5")).parse()

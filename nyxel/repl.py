@@ -1,26 +1,25 @@
 """
-nyxel.repl — Interactive Read-Eval-Print loop.
-
-Special REPL commands:  help  exit  quit  clear  vars
+nyxel.repl — Read-Eval-Print loop.
 """
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List
 
 from .version     import VERSION
 from .errors      import NyxError
 from .lexer       import lex
 from .parser      import Parser
-from .interpreter import Interpreter
+from .compiler    import Compiler
+from ._run        import __nyx_runtime
 from .builtins    import _display
 from .nyx_ast import ExprStmt
 
 
 BANNER = f"""\
-  ╔═══════════════════════════════════════════╗
+  ╔═════════════════════════════════════╗
   ║ Nyxel {VERSION} - a simple scripting lang ║
-  ╚═══════════════════════════════════════════╝
+  ╚═════════════════════════════════════╝
 
   Type  help  for commands,  exit  to quit.
    Results of expression are displayed automatically.
@@ -104,8 +103,6 @@ def _opens_block(line: str) -> bool:
     if not stripped.endswith(":"):
         return False
     first_word = stripped.rstrip(":").split()[0].lower() if stripped.rstrip(":") else ""
-    if first_word == "for":
-        return True
     return first_word in _BLOCK_OPENERS or stripped.endswith("python:")
 
 
@@ -114,11 +111,6 @@ def _indent_of(line: str) -> int:
 
 
 def _block_depth(buf: List[str]) -> int:
-    """
-    Count unclosed block levels in the accumulated buffer by tracking an
-    indent stack.  Each line ending with ':' that matches a block opener
-    pushes a level; dedenting pops it.
-    """
     stack: List[int] = []
     for line in buf:
         if not line.strip() or line.strip().startswith("#"):
@@ -137,14 +129,21 @@ def _show_result(value) -> None:
     print(f"   =  {_display(value)}")
 
 
-def _run(interp: Interpreter, source: str) -> None:
+def _run_once(g: dict, source: str) -> None:
     try:
         toks  = lex(source)
         stmts = Parser(toks).parse()
         if not stmts:
             return
-        result = interp.run_repl(stmts)
-        _show_result(result)
+        if len(stmts) == 1 and isinstance(stmts[0], ExprStmt):
+            c = Compiler()
+            py_expr = c._expr(stmts[0].expr)
+            result = eval(py_expr, g)
+            _show_result(result)
+        else:
+            from .compiler import transpile
+            py_source = transpile(stmts)
+            exec(py_source, g)
     except NyxError as e:
         print(e)
     except SystemExit:
@@ -153,32 +152,17 @@ def _run(interp: Interpreter, source: str) -> None:
         print(f"\n  InternalError\n  {'─'*40}\n  {e}\n")
 
 
-def _show_vars(interp: Interpreter) -> None:
-    from .runtime import NyxFunction, NyxStruct
-    from .builtins import setup_builtins
-
-    class _QuickEnv:
-        def __init__(self): self._names = set()
-        def define(self, k, v): self._names.add(k)
-    qe = _QuickEnv()
-    setup_builtins(qe)
-    builtin_names = qe._names
-
-    user = {k: v for k, v in interp.globals._v.items() if k not in builtin_names}
-
+def _show_vars(g: dict) -> None:
+    builtin_names = set(__nyx_runtime().keys())
+    user = {k: v for k, v in g.items() if k not in builtin_names}
     if not user:
         print("  (no variables defined yet)")
         return
-
     print()
     for name, val in sorted(user.items()):
-        if isinstance(val, NyxFunction):
-            sig = ", ".join(
-                p.name if p.default is None else f"{p.name} = ..."
-                for p in val.params
-            )
-            print(f"  {name}({sig})  →  fn")
-        elif isinstance(val, NyxStruct):
+        if callable(val) and not isinstance(val, type):
+            print(f"  {name}()  →  fn")
+        elif isinstance(val, type):
             print(f"  {name}  →  struct")
         else:
             print(f"  {name}  =  {_display(val)}")
@@ -194,7 +178,7 @@ def run_repl() -> None:
     except ImportError:
         pass
 
-    interp          = Interpreter()
+    g               = __nyx_runtime([])
     buf: List[str]  = []
     in_block        = False
 
@@ -219,7 +203,7 @@ def run_repl() -> None:
             if low == "clear":
                 print("\033[2J\033[H", end=""); continue
             if low == "vars":
-                _show_vars(interp); continue
+                _show_vars(g); continue
 
         if _opens_block(line):
             buf.append(line)
@@ -234,11 +218,11 @@ def run_repl() -> None:
                 source   = "\n".join(buf)
                 buf      = []
                 in_block = False
-                _run(interp, source)
+                _run_once(g, source)
             else:
                 buf.append(line)
             continue
 
         if not line.strip():
             continue
-        _run(interp, line)
+        _run_once(g, line)

@@ -6,8 +6,12 @@ import json
 import math
 import os
 import random as _random
+import subprocess
 import sys
 import time as _time
+import datetime as _dt
+import urllib.request
+from pathlib import Path
 from typing import Any, List
 
 from .errors import NyxError
@@ -38,7 +42,6 @@ def _pretty(data: Any) -> None:
 
 def _get(url: str) -> Any:
     try:
-        import urllib.request
         req = urllib.request.Request(url, headers={"User-Agent": f"Nyxel/{VERSION}"})
         with urllib.request.urlopen(req, timeout=15) as r:
             body = r.read().decode("utf-8")
@@ -55,7 +58,6 @@ def _get(url: str) -> Any:
 
 def _post(url: str, data: Any = None) -> Any:
     try:
-        import urllib.request
         headers = {"User-Agent": f"Nyxel/{VERSION}"}
         payload = b""
         if data is not None:
@@ -76,7 +78,6 @@ def _post(url: str, data: Any = None) -> Any:
 
 
 def _read(path: str) -> str:
-    from pathlib import Path
     p = Path(path)
     if not p.exists():
         raise NyxError("FileError", f"File not found: '{path}'",
@@ -85,7 +86,6 @@ def _read(path: str) -> str:
 
 
 def _read_lines(path: str) -> list:
-    from pathlib import Path
     p = Path(path)
     if not p.exists():
         raise NyxError("FileError", f"File not found: '{path}'",
@@ -108,7 +108,6 @@ def _words_of(text: str) -> list:
 
 
 def _write(path: str, content: Any) -> None:
-    from pathlib import Path
     Path(path).write_text(str(content), encoding="utf-8")
 
 
@@ -118,7 +117,6 @@ def _append(path: str, content: Any) -> None:
 
 
 def _save_json(path: str, data: Any) -> None:
-    from pathlib import Path
     raw = _unwrap(data)
     try:
         Path(path).write_text(json.dumps(raw, indent=2), encoding="utf-8")
@@ -128,7 +126,6 @@ def _save_json(path: str, data: Any) -> None:
 
 
 def _load_json(path: str) -> Any:
-    from pathlib import Path
     p = Path(path)
     if not p.exists():
         raise NyxError("FileError", f"File not found: '{path}'",
@@ -329,19 +326,84 @@ def _range(*args: Any) -> list:
 
 
 def _run_command(cmd: str) -> str:
-    import subprocess
     r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
     return (r.stdout + r.stderr).strip()
 
 
 def _run_lines(cmd: str) -> list:
-    import subprocess
     r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
     return [line for line in (r.stdout + r.stderr).strip().splitlines() if line.strip()]
 
 
-def setup_builtins(env: Environment, script_args: List[str] = None,
-                   interpreter=None) -> None:
+
+def _wait(amount, unit="seconds"):
+    units = {
+        "seconds": 1, "second": 1, "s": 1,
+        "minutes": 60, "minute": 60, "min": 60, "m": 60,
+        "hours": 3600, "hour": 3600, "h": 3600,
+        "ms": 0.001, "milliseconds": 0.001, "millisecond": 0.001,
+    }
+    mul = units.get(str(unit).lower().strip())
+    if mul is None:
+        raise NyxError("ValueError", f"Unknown time unit '{unit}'",
+                       hint="Use: seconds, minutes, hours, ms")
+    _time.sleep(float(amount) * mul)
+
+
+# returns a human-readable date/time object with fields and methods
+class _DateObj:
+    def __init__(self, dt):
+        self._dt = dt
+
+    def __getattr__(self, name):
+        dt = object.__getattribute__(self, "_dt")
+        if name == "year":    return dt.year
+        if name == "month":   return dt.month
+        if name == "day":     return dt.day
+        if name == "hour":    return dt.hour
+        if name == "minute":  return dt.minute
+        if name == "second":  return dt.second
+        if name == "unix":    return int(dt.timestamp())
+        if name == "weekday": return dt.strftime("%A")
+        # format("pattern") -> custom strftime
+        if name == "format":  return lambda p: dt.strftime(p)
+        raise AttributeError(f"date has no field '{name}'")
+
+    def __str__(self):
+        return self._dt.strftime("%B %d, %Y  %I:%M %p")
+
+    def __repr__(self):
+        return self.__str__()
+
+
+def _date():
+    return _DateObj(_dt.datetime.now())
+
+
+def _time_now():
+    return _dt.datetime.now().strftime("%I:%M %p")
+
+
+
+def _listen_key():
+    try:
+        import readchar
+        k = readchar.readkey()
+        # normalize special keys to readable names
+        special = {
+            readchar.key.ENTER: "enter", readchar.key.SPACE: "space",
+            readchar.key.BACKSPACE: "backspace", readchar.key.TAB: "tab",
+            readchar.key.UP: "up", readchar.key.DOWN: "down",
+            readchar.key.LEFT: "left", readchar.key.RIGHT: "right",
+            readchar.key.ESC: "escape",
+        }
+        return special.get(k, k)
+    except ImportError:
+        raise NyxError("ImportError", "listen_key() needs the readchar package",
+                       hint="Run:  pip install readchar")
+
+
+def setup_builtins(env: Environment, script_args: List[str] = None) -> None:
 
     env.define("say",    _say)
     env.define("pretty", _pretty)
@@ -410,15 +472,8 @@ def setup_builtins(env: Environment, script_args: List[str] = None,
     env.define("enumerate", lambda lst: [[i, v] for i, v in enumerate(lst)])
     env.define("any",      lambda lst: any(lst))
     env.define("all",      lambda lst: all(lst))
-
-    # map/filter need to support NyxFunctions, so they require the interpreter.
-    # Fall back to Python's built-ins when no interpreter is available (e.g. _show_vars).
-    if interpreter is not None:
-        env.define("map",    lambda fn, lst: [interpreter._call(fn, [x]) for x in lst])
-        env.define("filter", lambda fn, lst: [x for x in lst if interpreter._call(fn, [x])])
-    else:
-        env.define("map",    lambda fn, lst: list(map(fn, lst)))
-        env.define("filter", lambda fn, lst: list(filter(fn, lst)))
+    env.define("map",      lambda fn, lst: list(map(fn, lst)))
+    env.define("filter",   lambda fn, lst: list(filter(fn, lst)))
 
     env.define("split",       lambda s, sep=None: s.split(sep) if sep else s.split())
     env.define("join",        lambda sep, lst: sep.join(_str(x) for x in lst))
@@ -443,8 +498,11 @@ def setup_builtins(env: Environment, script_args: List[str] = None,
     env.define("ls",        lambda p=".": os.listdir(p))
     env.define("mkdir",     lambda p: os.makedirs(p, exist_ok=True) or True)
     env.define("cwd",       os.getcwd)
-    env.define("sleep",     _time.sleep)
-    env.define("time",      _time.time)
+    env.define("wait",       _wait)
+    env.define("date",       _date)
+    env.define("time",       _time_now)
+    env.define("unix",       lambda: int(_time.time()))
+    env.define("listen_key",  _listen_key)
 
     env.define("true",  True)
     env.define("false", False)

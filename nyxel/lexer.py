@@ -11,6 +11,10 @@ from typing import List
 from .errors import NyxError
 from .tokens import Token, KEYWORDS, ARABIC_TO_ENGLISH
 
+_ESCAPE_MAP = {"n": "\n", "t": "\t", "r": "\r",
+               '"': '"', "'": "'", "\\": "\\"}
+_NUM_RE = re.compile(r"\d+\.?\d*([eE][+-]?\d+)?")
+
 
 # ── internal: tokenise one non-indentation source line ───────────────────────
 
@@ -44,10 +48,7 @@ def _lex_line(text: str, line_num: int, raw: str) -> List[Token]:
                 c = text[end]
                 if c == "\\" and end + 1 < n:
                     nxt = text[end + 1]
-                    buf.append(
-                        {"n": "\n", "t": "\t", "r": "\r",
-                         '"': '"', "'": "'", "\\": "\\"}.get(nxt, "\\" + nxt)
-                    )
+                    buf.append(_ESCAPE_MAP.get(nxt, "\\" + nxt))
                     end += 2
                     continue
                 if c == q:
@@ -86,7 +87,7 @@ def _lex_line(text: str, line_num: int, raw: str) -> List[Token]:
 
         # numeric literals  12  3.14  1e10
         if ch.isdigit():
-            m = re.match(r"\d+\.?\d*([eE][+-]?\d+)?", text[col:])
+            m = _NUM_RE.match(text, col)
             if m:
                 s   = m.group()
                 val = float(s) if ("." in s or "e" in s.lower()) else int(s)
@@ -111,29 +112,11 @@ def _lex_line(text: str, line_num: int, raw: str) -> List[Token]:
             if word in ARABIC_TO_ENGLISH:
                 toks.append(Token("KW", ARABIC_TO_ENGLISH[word],
                                   line_num, col + 1, raw))
-            elif word.lower() in KEYWORDS:
-                toks.append(Token("KW", word.lower(), line_num, col + 1, raw))
+            elif (word_lower := word.lower()) in KEYWORDS:
+                toks.append(Token("KW", word_lower, line_num, col + 1, raw))
             else:
                 toks.append(Token("ID", word, line_num, col + 1, raw))
 
-            col = end
-            continue
-
-        # Arabic-starting characters not caught above (standalone Arabic letters)
-        if "\u0600" <= ch <= "\u06FF" or "\u0750" <= ch <= "\u077F":
-            end = col
-            while end < n and (text[end].isalnum() or text[end] == "_"
-                                or "\u0600" <= text[end] <= "\u06FF"
-                                or "\u0750" <= text[end] <= "\u077F"
-                                or "\uFB50" <= text[end] <= "\uFDFF"
-                                or "\uFE70" <= text[end] <= "\uFEFF"):
-                end += 1
-            word = text[col:end]
-            if word in ARABIC_TO_ENGLISH:
-                toks.append(Token("KW", ARABIC_TO_ENGLISH[word],
-                                  line_num, col + 1, raw))
-            else:
-                toks.append(Token("ID", word, line_num, col + 1, raw))
             col = end
             continue
 

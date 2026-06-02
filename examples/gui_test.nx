@@ -1,53 +1,14 @@
 let count = 0
 
-fn on_increment():
+fn on_add():
     count = count + 1
-    counter_label.text = "Count: " + to_str(count)
-
-fn on_decrement():
-    when count > 0:
-        count = count - 1
-    counter_label.text = "Count: " + to_str(count)
+    display.text = "Count: " + to_str(count)
 
 fn on_reset():
     count = 0
-    counter_label.text = "Count: 0"
+    display.text = "Count: 0"
 
-fn on_greet():
-    let name = name_input.value
-    when name == "":
-        greeting_label.text = "Please enter a name!"
-    otherwise:
-        greeting_label.text = "Hello, " + name + "!"
-
-fn on_greet_ar():
-    let name = name_input.value
-    when name == "":
-        greeting_label.text = "!يرجى إدخال اسمك"
-    otherwise:
-        greeting_label.text = "!مرحباً " + name
-
-fn on_clear():
-    greeting_label.text = "Greeting will appear here"
-
-create window("Nyxel GUI Test") size(460, 420):
-
-    label("Counter  —  العداد")                                          place(20, 20)
-    counter_label = label("Count: 0") color("#5a9cf8")                   place(20, 52)
-
-    btn("＋") color("green")  on_click(on_increment)                     place(20,  90)
-    btn("－") color("orange") on_click(on_decrement)                     place(80,  90)
-    btn("Reset") color("red") on_click(on_reset)                         place(140, 90)
-
-    separator                                                             place(20, 145)
-
-    label("Greeter  —  المرحّب")                                         place(20, 162)
-    name_input = input("Type a name / اكتب اسمًا")                       place(20, 196)
-
-    btn("Greet  👋")   color("purple") on_click(on_greet)                place(20,  248)
-    btn("مرحبا  👋")   color("#5a9cf8") on_click(on_greet_ar)            place(160, 248)
-    btn("Clear ✕")     color("gray")   on_click(on_clear)                place(300, 248)
-
-    greeting_label = label("Greeting will appear here")                  place(20, 305)
-
-    dim_label("Nyxel  —  customtkinter backend")                         place(20, 385)
+create window("Counter") size(300, 200):
+    display = label("Count: 0")       place(20, 20)
+    btn("Add")    on_click(on_add)    place(20, 60)
+    btn("Reset") color("red") on_click(on_reset) place(120, 60)
