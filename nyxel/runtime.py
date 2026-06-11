@@ -1,47 +1,3 @@
-"""
-Nyxel.runtime
-
-Run-time data structures used by the interpreter.
-
- Environment lexically-scoped variable store
-Param, a typed named tuple for function parameters
-
-NyxFunction a user-defined function of a Nyxel (closure) placehoder name NyxFunction, and will contain a Nyxel function.
-
-NyxObject, a dot-accessible dict wrapper
-
- NyxStruct . Struct constructor
-
-NyxException – Throwable returned by the catch block.
-
- Wrap / Unwrap reference-preserving conversion helpers
-
-Reference-semantics contract
-
-Nyxel uses REFERENCE semantics for objects (dicts / NyxObjects).
-
-This is a design choice, as per Python and JS.
-
- def a = {1=>“x”}
-
- let b = 0contd.
-
-B. x = 99
-
- say(a.x) # -> 99 (a and b are the same object)
-
-Wrap() Wraps a Python dict in NyxObjectWITHOUTcopying.
-
-This maintains API responses, module namespace and struct instances.
-
-Being cheap to pass around. It also means that mutations are everywhere visible
-
-The object in the way scripting users are accustomed to.:
-
-If you need an independent copy:
-B = a.copy() # A NyxObject.copy() returns a shallow copy
-──────────────────────────────────────────────────────────────────
-"""
 
 from __future__ import annotations
 
@@ -367,26 +323,6 @@ class NyxStruct:
 # ══════════════════════════════════════════════════════════════════════════════
 
 class NyxException(NyxObject):
-    """
-    The error object surfaced in catch e: blocks.
-
-    Placement justification : The NyxException is in this location as runtime.py near to this line.
-
-    (NyxObject) and not in interpreter.py as it IS a runtime value
-    It is saved in catch as an other NyxObject and goes into the States:
-    Readable by e.kind and e.message. It is not a machine language to perform; 
-
-    It is data: years, weeks, days, hours,  even seconds, uncounted,  making the whole work become indefinite and into huge amount of data totally.
-
-    Adding a VM / bytecode layer, NyxException would still be present at
-
-    The runtime layer,  as long as the VM creates instances on catching an error.
-        try:
-            risky()
-        catch e:
-            say(e.kind)       # e.g. "MathError"
-            say(e.message)    # e.g. "Division by zero"
-    """
 
     def __init__(self, kind: str, message: str):
         super().__init__({"kind": kind, "message": message})
